@@ -41,7 +41,7 @@ export default function CreateScreen() {
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>新しいデータセット</Text>
+        <Text style={styles.title}>データセット作成</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -100,7 +100,7 @@ export default function CreateScreen() {
             styles.createButtonText,
             !datasetName.trim() && styles.createButtonTextDisabled
           ]}>
-            データセットを作成
+            作成
           </Text>
         </TouchableOpacity>
       </View>
