@@ -7,6 +7,7 @@ export const Colors = {
   
   // 背景色
   background: '#EDF2F7',
+  card: '#FFFFFF',
   
   // テキストカラー
   text: '#0F1419',
@@ -16,7 +17,7 @@ export const Colors = {
   error: '#E50505',
   
   // ボーダー・区切り線
-  // border: '#E5E5E7',
+  border: '#E5E5E7',
   // borderLight: '#F2F2F7',
   
   // その他

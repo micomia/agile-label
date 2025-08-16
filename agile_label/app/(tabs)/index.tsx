@@ -1,15 +1,19 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
-import { Text, View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { Link } from 'expo-router'; 
+import { router } from 'expo-router';
+import { FloatingActionButton } from '../../components/FloatingActionButton'; 
 
 export default function Index() {
+  const handleFabPress = () => {
+    router.push('/create');
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Home screen</Text>
-      <Link href="/about" style={styles.button}>
-        Go to About screen
-      </Link>
+      <Text style={styles.text}>データセットを作成しましょう</Text>
+      {/* Floating Action Button */}
+      <FloatingActionButton onPress={handleFabPress} />
     </View>
   );
 }
@@ -23,10 +27,8 @@ const styles = StyleSheet.create({
   },
   text: {
     color: Colors.text,
-  },
-  button: {
-    fontSize: 20,
-    textDecorationLine: 'underline',
-    color: Colors.text,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
