@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActionSheetIOS, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../../constants/Colors';
 import { useDatasets } from '../../../../contexts/DatasetContext';
 import { ImageGallery } from '../../../../components/ImageGallery';
 import { FloatingActionButton } from '../../../../components/FloatingActionButton';
+import { saveMultipleImagesToFiles, createAndShareDatasetZip } from '../../../../utils/fileUtils';
 
 export default function DatasetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,6 +19,82 @@ export default function DatasetDetailScreen() {
     console.log('カメラを開く');
   };
 
+  const handleSaveDataset = () => {
+    if (!dataset || dataset.images.length === 0) {
+      Alert.alert('エラー', '保存する画像がありません');
+      return;
+    }
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['キャンセル', 'フォトライブラリに保存', 'ファイルとして保存'],
+          cancelButtonIndex: 0,
+          title: 'データセットを保存'
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleSaveToPhotoLibrary();
+          } else if (buttonIndex === 2) {
+            handleSaveAsFiles();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'データセットを保存',
+        '保存方法を選択してください',
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          { text: 'フォトライブラリ', onPress: handleSaveToPhotoLibrary },
+          { text: 'ファイル', onPress: handleSaveAsFiles }
+        ]
+      );
+    }
+  };
+
+  const handleSaveToPhotoLibrary = async () => {
+    if (!dataset) return;
+    
+    Alert.alert(
+      'フォトライブラリに保存',
+      `${dataset.images.length}枚の画像をフォトライブラリに保存しますか？`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '保存',
+          onPress: async () => {
+            const success = await saveMultipleImagesToFiles(dataset.images, dataset.name);
+            if (success) {
+              Alert.alert('保存完了', 'データセットがフォトライブラリに保存されました');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSaveAsFiles = async () => {
+    if (!dataset) return;
+    
+    Alert.alert(
+      'ファイルとして保存',
+      `${dataset.images.length}枚の画像をファイルとして保存しますか？`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '保存',
+          onPress: async () => {
+            const success = await createAndShareDatasetZip(dataset.images, dataset.name);
+            if (success) {
+              Alert.alert('保存完了', 'ファイルアプリでデータセットを保存できます');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (!dataset) {
     return (
       <SafeAreaView style={styles.container}>
@@ -26,7 +103,7 @@ export default function DatasetDetailScreen() {
             <Ionicons name="arrow-back" size={24} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>データセットが見つかりません</Text>
-          <View style={styles.placeholder} />
+          <View style={{ width: 40 }} />
         </View>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>データセットが見つかりません</Text>
@@ -43,7 +120,9 @@ export default function DatasetDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>{dataset.name}</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity onPress={handleSaveDataset} style={styles.saveDatasetButton}>
+          <Ionicons name="download-outline" size={24} color={Colors.text} />
+        </TouchableOpacity>
       </View>
 
       {/* 統計情報バー */}
@@ -96,15 +175,15 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
+  saveDatasetButton: {
+    padding: 8,
+  },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.text,
     flex: 1,
     textAlign: 'center',
-  },
-  placeholder: {
-    width: 40,
   },
   statsBar: {
     flexDirection: 'row',

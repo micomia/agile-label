@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatasets, Dataset } from '../../../contexts/DatasetContext';
+import { createAndShareDatasetZip } from '../../../utils/fileUtils';
 
 export default function Index() {
   const { datasets, deleteDataset } = useDatasets();
@@ -31,24 +32,14 @@ export default function Index() {
     );
   };
 
-  const handleShareDataset = (dataset: Dataset) => {
-    Alert.alert(
-      'データセットを共有',
-      `「${dataset.name}」を共有しますか？`,
-      [
-        {
-          text: 'キャンセル',
-          style: 'cancel',
-        },
-        {
-          text: '共有',
-          onPress: () => {
-            // TODO: 実際の共有機能を実装
-            Alert.alert('共有', 'データセットの共有機能は開発中です');
-          },
-        },
-      ]
-    );
+  const handleShareDataset = async (dataset: Dataset) => {
+    if (dataset.images.length === 0) {
+      Alert.alert('エラー', '保存する画像がありません');
+      return;
+    }
+
+    // 直接ファイルとして保存（iOSシェア画面を表示）
+    await createAndShareDatasetZip(dataset.images, dataset.name);
   };
 
   const handleCardPress = (dataset: Dataset) => {
@@ -72,7 +63,7 @@ export default function Index() {
           }}
           style={styles.shareButton}
         >
-          <Ionicons name="share-outline" size={24} color={Colors.primary} />
+          <Ionicons name="download-outline" size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
       {item.description && (

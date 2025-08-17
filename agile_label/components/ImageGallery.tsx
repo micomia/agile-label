@@ -9,10 +9,12 @@ import {
   Text,
   SafeAreaView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { ImageData } from '../contexts/DatasetContext';
+import { saveImageToFiles } from '../utils/fileUtils';
 
 interface ImageGalleryProps {
   images: ImageData[];
@@ -24,6 +26,28 @@ const itemSize = screenWidth / 3; // 3列表示、間隔なし
 export function ImageGallery({ images }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const modalFlatListRef = useRef<FlatList>(null);
+
+  const handleSaveImage = async (image: ImageData) => {
+    Alert.alert(
+      '画像を保存',
+      'この画像をフォトライブラリに保存しますか？',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel'
+        },
+        {
+          text: '保存',
+          onPress: async () => {
+            const success = await saveImageToFiles(image);
+            if (success) {
+              Alert.alert('保存完了', '画像がフォトライブラリに保存されました');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const renderImageItem = ({ item, index }: { item: ImageData; index: number }) => (
     <TouchableOpacity
@@ -85,6 +109,14 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               <Text style={styles.imageCounter}>
                 {selectedImageIndex + 1} / {images.length}
               </Text>
+            )}
+            {selectedImageIndex !== null && (
+              <TouchableOpacity
+                onPress={() => handleSaveImage(images[selectedImageIndex])}
+                style={styles.saveButton}
+              >
+                <Ionicons name="download-outline" size={24} color="#ffffff" />
+              </TouchableOpacity>
             )}
           </View>
 
@@ -201,6 +233,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   closeButton: {
+    padding: 8,
+  },
+  saveButton: {
     padding: 8,
   },
   imageCounter: {
