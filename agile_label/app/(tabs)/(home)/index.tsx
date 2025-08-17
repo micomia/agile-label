@@ -1,10 +1,10 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
-import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { Colors } from '../../../constants/Colors';
 import { router } from 'expo-router';
-import { FloatingActionButton } from '../../components/FloatingActionButton';
+import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { Ionicons } from '@expo/vector-icons';
-import { useDatasets, Dataset } from '../../contexts/DatasetContext';
+import { useDatasets, Dataset } from '../../../contexts/DatasetContext';
 
 export default function Index() {
   const { datasets, deleteDataset } = useDatasets();
@@ -51,17 +51,25 @@ export default function Index() {
     );
   };
 
+  const handleCardPress = (dataset: Dataset) => {
+    router.push(`/dataset/${dataset.id}`);
+  };
+
   // データセットカードをレンダリングする関数
   const renderDatasetCard = ({ item }: { item: Dataset }) => (
     <TouchableOpacity 
       style={styles.card}
+      onPress={() => handleCardPress(item)}
       onLongPress={() => handleDeleteDataset(item)}
       delayLongPress={500}
     >
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{item.name}</Text>
         <TouchableOpacity
-          onPress={() => handleShareDataset(item)}
+          onPress={(e) => {
+            e.stopPropagation();
+            handleShareDataset(item);
+          }}
           style={styles.shareButton}
         >
           <Ionicons name="share-outline" size={24} color={Colors.primary} />
@@ -82,7 +90,12 @@ export default function Index() {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* 固定ヘッダー */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>データセット</Text>
+      </View>
+      
       {/* メインコンテンツエリア */}
       <View style={styles.content}>
         {datasets.length === 0 ? (
@@ -100,7 +113,7 @@ export default function Index() {
       
       {/* Floating Action Button */}
       <FloatingActionButton onPress={handleFabPress} />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -108,6 +121,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.text,
   },
   content: {
     flex: 1,

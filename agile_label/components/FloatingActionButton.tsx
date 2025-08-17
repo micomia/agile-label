@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 
 interface FloatingActionButtonProps {
@@ -11,6 +11,8 @@ interface FloatingActionButtonProps {
   iconColor?: string;
   iconSize?: number;
   iconName?: keyof typeof AntDesign.glyphMap;
+  iconLibrary?: 'AntDesign' | 'Ionicons';
+  ioniconsName?: keyof typeof Ionicons.glyphMap;
 }
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
@@ -21,7 +23,16 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   iconColor = '#FFFFFF',
   iconSize = 24,
   iconName = 'plus',
+  iconLibrary = 'AntDesign',
+  ioniconsName,
 }) => {
+  const renderIcon = () => {
+    if (iconLibrary === 'Ionicons' && ioniconsName) {
+      return <Ionicons name={ioniconsName} size={iconSize} color={iconColor} />;
+    }
+    return <AntDesign name={iconName} size={iconSize} color={iconColor} />;
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -37,7 +48,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <AntDesign name={iconName} size={iconSize} color={iconColor} />
+      {renderIcon()}
     </TouchableOpacity>
   );
 };
