@@ -3,10 +3,12 @@ import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useDatasets } from '../contexts/DatasetContext';
 
 export default function CreateScreen() {
   const [datasetName, setDatasetName] = useState('');
   const [datasetDescription, setDatasetDescription] = useState('');
+  const { addDataset } = useDatasets();
 
   const handleClose = () => {
     router.back();
@@ -18,7 +20,9 @@ export default function CreateScreen() {
       return;
     }
 
-    // TODO: データセット作成処理を実装
+    // データセットを作成
+    addDataset(datasetName.trim(), datasetDescription.trim());
+    
     Alert.alert(
       '作成完了', 
       `データセット「${datasetName}」を作成しました！`, 
