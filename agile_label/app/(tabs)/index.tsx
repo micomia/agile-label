@@ -31,6 +31,26 @@ export default function Index() {
     );
   };
 
+  const handleShareDataset = (dataset: Dataset) => {
+    Alert.alert(
+      'データセットを共有',
+      `「${dataset.name}」を共有しますか？`,
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: '共有',
+          onPress: () => {
+            // TODO: 実際の共有機能を実装
+            Alert.alert('共有', 'データセットの共有機能は開発中です');
+          },
+        },
+      ]
+    );
+  };
+
   // データセットカードをレンダリングする関数
   const renderDatasetCard = ({ item }: { item: Dataset }) => (
     <TouchableOpacity 
@@ -40,16 +60,24 @@ export default function Index() {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{item.name}</Text>
-        <Ionicons name="share-outline" size={24} color={Colors.primary} />
+        <TouchableOpacity
+          onPress={() => handleShareDataset(item)}
+          style={styles.shareButton}
+        >
+          <Ionicons name="share-outline" size={24} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
       {item.description && (
         <Text style={styles.cardDescription} numberOfLines={2}>
           {item.description}
         </Text>
       )}
-      <Text style={styles.cardDate}>
-        作成日: {item.createdAt.toLocaleDateString('ja-JP')}
-      </Text>
+      <View style={styles.cardFooter}>
+        <Ionicons name="image-outline" size={16} color={Colors.text + '60'} />
+        <Text style={styles.imageCount}>{item.imageCount}枚</Text>
+        <Ionicons name="pricetag-outline" size={16} color={Colors.text + '60'} style={styles.labelIcon} />
+        <Text style={styles.labelCount}>{item.labelCount}クラス</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -116,6 +144,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  shareButton: {
+    padding: 4,
+    borderRadius: 8,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -128,8 +160,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 20,
   },
-  cardDate: {
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  imageCount: {
     fontSize: 12,
     color: Colors.text + '60',
+    marginLeft: 4,
+  },
+  labelIcon: {
+    marginLeft: 12,
+  },
+  labelCount: {
+    fontSize: 12,
+    color: Colors.text + '60',
+    marginLeft: 4,
   },
 });
