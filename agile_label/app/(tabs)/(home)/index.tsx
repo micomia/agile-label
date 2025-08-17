@@ -1,14 +1,26 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
 import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { Colors } from '../../../constants/Colors';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatasets, Dataset } from '../../../contexts/DatasetContext';
 import { createAndShareDatasetZip } from '../../../utils/fileUtils';
+import React from 'react';
 
 export default function Index() {
-  const { datasets, deleteDataset } = useDatasets();
+  const { datasets, deleteDataset, loadDatasetImages } = useDatasets();
+
+  // 一度だけ全データセットの画像を読み込む
+  useFocusEffect(
+    React.useCallback(() => {
+      // 固定されたIDリストを使用して無限ループを防ぐ
+      const datasetIds = ['1', '2'];
+      datasetIds.forEach(id => {
+        loadDatasetImages(id);
+      });
+    }, [loadDatasetImages])
+  );
 
   const handleFabPress = () => {
     router.push('/create');

@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です"
+        "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です",
+        "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です"
       }
     },
     "android": {
@@ -22,7 +23,8 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.CAMERA"
       ]
     },
     "web": {

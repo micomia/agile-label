@@ -1,22 +1,31 @@
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActionSheetIOS, Platform } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../../constants/Colors';
 import { useDatasets } from '../../../../contexts/DatasetContext';
 import { ImageGallery } from '../../../../components/ImageGallery';
 import { FloatingActionButton } from '../../../../components/FloatingActionButton';
 import { saveMultipleImagesToFiles, createAndShareDatasetZip } from '../../../../utils/fileUtils';
+import React from 'react';
 
 export default function DatasetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { datasets } = useDatasets();
+  const { datasets, loadDatasetImages } = useDatasets();
   
   // IDに基づいてデータセットを取得
   const dataset = datasets.find(d => d.id === id);
 
+  // ページにフォーカスが当たった時に画像を読み込む
+  useFocusEffect(
+    React.useCallback(() => {
+      if (id) {
+        loadDatasetImages(id);
+      }
+    }, [id, loadDatasetImages])
+  );
+
   const handleCameraPress = () => {
-    // TODO: カメラ機能を実装
-    console.log('カメラを開く');
+    router.push(`/(tabs)/(home)/camera?datasetId=${id}` as any);
   };
 
   const handleSaveDataset = () => {
