@@ -17,6 +17,22 @@ import { useDatasets } from '../../../contexts/DatasetContext';
 
 const { width, height } = Dimensions.get('window');
 
+// 3:4の縦横比でカメラビューのサイズを計算（縦長）
+const topBarHeight = 120;
+const bottomBarHeight = 180; // 下部の黒い帯を高くする
+const cameraHeight = height - topBarHeight - bottomBarHeight; // 上下の黒い帯分を引く
+const cameraWidth = width;
+const aspectRatio = 3 / 4; // 縦長の比率に変更
+
+// カメラビューを3:4の縦横比に調整（縦長）
+let adjustedCameraWidth = cameraWidth;
+let adjustedCameraHeight = cameraWidth / aspectRatio;
+
+if (adjustedCameraHeight > cameraHeight) {
+  adjustedCameraHeight = cameraHeight;
+  adjustedCameraWidth = cameraHeight * aspectRatio;
+}
+
 export default function CameraScreen() {
   const { datasetId } = useLocalSearchParams<{ datasetId?: string }>();
   const { addImageToDataset } = useDatasets();
@@ -60,11 +76,19 @@ export default function CameraScreen() {
     if (cameraRef.current && isCameraReady) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
+          quality: 1.0, // 最高品質で撮影
           base64: false,
+          skipProcessing: true, // 画像処理をスキップして元の解像度を保持
         });
 
         if (photo) {
+          // 画像の解像度情報をログに出力
+          console.log('撮影した画像の情報:', {
+            width: photo.width,
+            height: photo.height,
+            uri: photo.uri
+          });
+          
           await savePhotoToDataset(photo.uri);
         }
       } catch (error) {
@@ -130,14 +154,9 @@ export default function CameraScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <CameraView
-        style={styles.camera}
-        facing={facing}
-        ref={cameraRef}
-        onCameraReady={() => setIsCameraReady(true)}
-      >
-        {/* ヘッダー */}
+    <View style={styles.container}>
+      {/* 上部の黒い帯 */}
+      <View style={styles.topBar}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="white" />
@@ -147,19 +166,32 @@ export default function CameraScreen() {
             <Ionicons name="camera-reverse" size={24} color="white" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* 撮影ボタン */}
-        <View style={styles.bottomControls}>
-          <TouchableOpacity
-            style={styles.captureButton}
-            onPress={takePicture}
-            disabled={!isCameraReady}
-          >
-            <View style={styles.captureButtonInner} />
-          </TouchableOpacity>
-        </View>
-      </CameraView>
-    </SafeAreaView>
+      {/* カメラビュー */}
+      <View style={styles.cameraContainer}>
+        <CameraView
+          style={[styles.camera, {
+            width: adjustedCameraWidth,
+            height: adjustedCameraHeight,
+          }]}
+          facing={facing}
+          ref={cameraRef}
+          onCameraReady={() => setIsCameraReady(true)}
+        />
+      </View>
+
+      {/* 下部の黒い帯 */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.captureButton}
+          onPress={takePicture}
+          disabled={!isCameraReady}
+        >
+          <View style={styles.captureButtonInner} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -167,8 +199,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   message: {
     textAlign: 'center',
@@ -176,10 +206,25 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
   },
+  topBar: {
+    height: 120,
+    backgroundColor: 'black',
+    justifyContent: 'flex-end',
+  },
   camera: {
+    backgroundColor: 'black',
+  },
+  cameraContainer: {
     flex: 1,
-    width: width,
-    height: height,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
+  bottomBar: {
+    height: 180, // 高さを120から180に増やす
+    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -188,7 +233,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'transparent',
   },
   headerButton: {
     padding: 8,
@@ -197,13 +242,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  bottomControls: {
-    position: 'absolute',
-    bottom: 50,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
   },
   captureButton: {
     width: 80,

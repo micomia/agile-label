@@ -111,14 +111,9 @@ export default function CameraScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <CameraView
-        style={styles.camera}
-        facing={facing}
-        ref={cameraRef}
-        onCameraReady={() => setIsCameraReady(true)}
-      >
-        {/* ヘッダー */}
+    <View style={styles.container}>
+      {/* 上部の黒い帯 */}
+      <View style={styles.topBar}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="white" />
@@ -128,19 +123,27 @@ export default function CameraScreen() {
             <Ionicons name="camera-reverse" size={24} color="white" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* 撮影ボタン */}
-        <View style={styles.bottomControls}>
-          <TouchableOpacity
-            style={styles.captureButton}
-            onPress={takePicture}
-            disabled={!isCameraReady}
-          >
-            <View style={styles.captureButtonInner} />
-          </TouchableOpacity>
-        </View>
-      </CameraView>
-    </SafeAreaView>
+      {/* カメラビュー */}
+      <CameraView
+        style={styles.camera}
+        facing={facing}
+        ref={cameraRef}
+        onCameraReady={() => setIsCameraReady(true)}
+      />
+
+      {/* 下部の黒い帯 */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.captureButton}
+          onPress={takePicture}
+          disabled={!isCameraReady}
+        >
+          <View style={styles.captureButtonInner} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -148,8 +151,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   message: {
     textAlign: 'center',
@@ -157,10 +158,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
   },
+  topBar: {
+    height: 120,
+    backgroundColor: 'black',
+    justifyContent: 'flex-end',
+  },
   camera: {
     flex: 1,
     width: width,
-    height: height,
+  },
+  bottomBar: {
+    height: 120,
+    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -169,7 +180,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'transparent',
   },
   headerButton: {
     padding: 8,

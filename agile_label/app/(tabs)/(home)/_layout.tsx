@@ -17,6 +17,13 @@ export default function HomeStack() {
           animation: 'slide_from_right',
         }} 
       />
+      <Stack.Screen 
+        name="camera" 
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+        }} 
+      />
     </Stack>
   );
 }
