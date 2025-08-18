@@ -8,6 +8,7 @@ import { useDatasets } from '../contexts/DatasetContext';
 export default function CreateScreen() {
   const [datasetName, setDatasetName] = useState('');
   const [datasetDescription, setDatasetDescription] = useState('');
+  const [classNames, setClassNames] = useState('');
   const { addDataset } = useDatasets();
 
   const handleClose = () => {
@@ -81,11 +82,28 @@ export default function CreateScreen() {
           <Text style={styles.characterCount}>{datasetDescription.length}/200</Text>
         </View>
 
+        {/* クラス名入力 */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>クラス名</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={classNames}
+            onChangeText={setClassNames}
+            placeholder="鳥, 猫, 犬&#10;（改行またはカンマ区切りで複数のクラスを入力）"
+            placeholderTextColor={Colors.text + '80'}
+            multiline
+            numberOfLines={3}
+            maxLength={300}
+            textAlignVertical="top"
+          />
+          <Text style={styles.characterCount}>{classNames.length}/300</Text>
+        </View>
+
         {/* 注意事項 */}
         <View style={styles.noteContainer}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
           <Text style={styles.noteText}>
-            データセット名は後から変更できます。説明は任意項目です。
+            データセット名は後から変更できます。説明とクラス名は任意項目です。クラス名は撮影時のラベル付けで使用されます。
           </Text>
         </View>
       </ScrollView>
