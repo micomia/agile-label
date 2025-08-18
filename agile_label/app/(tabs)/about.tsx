@@ -1,7 +1,48 @@
-import { Text, View, StyleSheet, SafeAreaView } from 'react-native';
+import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 
 export default function AboutScreen() {
+  const handleLinkPress = (url: string, title: string) => {
+    Alert.alert(
+      title,
+      `${url}を開きますか？`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        { 
+          text: '開く', 
+          onPress: () => Linking.openURL(url).catch(() => 
+            Alert.alert('エラー', 'リンクを開けませんでした')
+          )
+        }
+      ]
+    );
+  };
+
+  const handleHelpPress = () => {
+    Alert.alert(
+      'ヘルプ',
+      'Agile Labelは機械学習用のデータセット作成をサポートするカメラアプリです。\n\n主な機能:\n• 高解像度写真撮影（3024×4032）\n• ラベル付けワークフロー\n• データセット管理\n\nご質問やサポートが必要な場合は、開発者にお問い合わせください。',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handlePrivacyPress = () => {
+    Alert.alert(
+      'プライバシーポリシー',
+      'このアプリは以下の権限を使用します:\n\n• カメラ: 写真撮影のため\n• フォトライブラリ: 撮影した画像の保存のため\n\n撮影された画像はデバイス内にのみ保存され、外部に送信されることはありません。ユーザーのプライバシーを最優先に考慮して設計されています。',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleLicensePress = () => {
+    Alert.alert(
+      'ライセンス情報',
+      'このアプリは以下のオープンソースライブラリを使用しています:\n\n• React Native (MIT License)\n• Expo SDK (MIT License)\n• Expo Camera (MIT License)\n• Expo Router (MIT License)\n• TypeScript (Apache License 2.0)\n• React (MIT License)\n\nこれらのライブラリの詳細なライセンス情報については、各プロジェクトの公式サイトをご確認ください。',
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* カスタムヘッダー */}
@@ -10,9 +51,65 @@ export default function AboutScreen() {
       </View>
       
       {/* メインコンテンツエリア */}
-      <View style={styles.content}>
-        <Text style={styles.text}>About screen</Text>
-      </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* アプリ情報セクション */}
+        <View style={styles.section}>
+          <View style={styles.appInfo}>
+            <Ionicons name="camera" size={60} color={Colors.tint} />
+            <Text style={styles.appName}>Agile Label</Text>
+            <Text style={styles.appDescription}>
+              機械学習用データセット作成アプリ
+            </Text>
+          </View>
+        </View>
+
+        {/* このアプリについてセクション */}
+        <View style={styles.aboutSection}>
+          <Text style={styles.sectionTitle}>このアプリについて</Text>
+        </View>
+
+        {/* メニューセクション */}
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleHelpPress}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="help-circle-outline" size={24} color={Colors.text} />
+              <Text style={styles.menuItemText}>ヘルプ</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handlePrivacyPress}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="shield-checkmark-outline" size={24} color={Colors.text} />
+              <Text style={styles.menuItemText}>プライバシーポリシー</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleLicensePress}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="document-text-outline" size={24} color={Colors.text} />
+              <Text style={styles.menuItemText}>ライセンス</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={styles.versionItem}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="information-circle-outline" size={24} color={Colors.text} />
+              <Text style={styles.menuItemText}>バージョン</Text>
+            </View>
+            <Text style={styles.versionText}>0.1.0</Text>
+          </View>
+        </View>
+
+        {/* 著作権情報 */}
+        <View style={styles.section}>
+          <Text style={styles.copyright}>
+            © 2024 Agile Label. All rights reserved.
+          </Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -37,11 +134,78 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 20,
   },
-  text: {
+  section: {
+    marginBottom: 32,
+  },
+  aboutSection: {
+    marginBottom: 8,
+  },
+  appInfo: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: Colors.text,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  appVersion: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  appDescription: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.cardBackground,
+    marginBottom: 1,
+    borderRadius: 8,
+  },
+  versionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.cardBackground,
+    marginBottom: 1,
+    borderRadius: 8,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: Colors.text,
+    marginLeft: 16,
+  },
+  versionText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  copyright: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
 });
