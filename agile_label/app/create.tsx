@@ -3,10 +3,12 @@ import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useDatasets } from '../contexts/DatasetContext';
 
 export default function CreateScreen() {
   const [datasetName, setDatasetName] = useState('');
   const [datasetDescription, setDatasetDescription] = useState('');
+  const { addDataset } = useDatasets();
 
   const handleClose = () => {
     router.back();
@@ -18,7 +20,9 @@ export default function CreateScreen() {
       return;
     }
 
-    // TODO: データセット作成処理を実装
+    // データセットを作成
+    addDataset(datasetName.trim(), datasetDescription.trim());
+    
     Alert.alert(
       '作成完了', 
       `データセット「${datasetName}」を作成しました！`, 
@@ -41,7 +45,7 @@ export default function CreateScreen() {
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>新しいデータセット</Text>
+        <Text style={styles.title}>データセット作成</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -100,7 +104,7 @@ export default function CreateScreen() {
             styles.createButtonText,
             !datasetName.trim() && styles.createButtonTextDisabled
           ]}>
-            データセットを作成
+            作成
           </Text>
         </TouchableOpacity>
       </View>

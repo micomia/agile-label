@@ -20,9 +20,10 @@ export default function TabLayout() {
     }}
     >
       <Tabs.Screen
-        name="index"
+        name="(home)"
         options={{
-          title: 'ホーム',
+          title: 'ホーム', // タブバーに表示される文字
+          headerShown: false, // ヘッダーを非表示にして、各画面で独自のヘッダーを使用
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'home-sharp' : 'home-outline'} color={color} size={24} />
           ),
@@ -31,7 +32,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="about"
         options={{
-          title: 'その他',
+          title: 'その他', // タブバーに表示される文字
+          headerShown: false, // ヘッダーを非表示にして、各画面で独自のヘッダーを使用
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'information-circle' : 'information-circle-outline'} color={color} size={24}/>
           ),
