@@ -94,25 +94,26 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 固定ヘッダー */}
+      {/* カスタムヘッダー */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>データセット</Text>
       </View>
       
       {/* メインコンテンツエリア */}
-      <View style={styles.content}>
-        {datasets.length === 0 ? (
+      {datasets.length === 0 ? (
+        <View style={styles.emptyContent}>
           <Text style={styles.text}>データセットを作成しましょう</Text>
-        ) : (
-          <FlatList
-            data={datasets}
-            renderItem={renderDatasetCard}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </View>
+        </View>
+      ) : (
+        <FlatList
+          style={styles.content}
+          data={datasets}
+          renderItem={renderDatasetCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       
       {/* Floating Action Button */}
       <FloatingActionButton onPress={handleFabPress} />
@@ -139,6 +140,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  emptyContent: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
