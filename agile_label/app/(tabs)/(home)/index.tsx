@@ -11,15 +11,14 @@ import React from 'react';
 export default function Index() {
   const { datasets, deleteDataset, loadDatasetImages } = useDatasets();
 
-  // 一度だけ全データセットの画像を読み込む
+  // フォーカス時にデータセットの画像を読み込む
   useFocusEffect(
     React.useCallback(() => {
-      // 固定されたIDリストを使用して無限ループを防ぐ
-      const datasetIds = ['1', '2'];
-      datasetIds.forEach(id => {
-        loadDatasetImages(id);
+      // 存在するデータセットのIDのみを使用
+      datasets.forEach(dataset => {
+        loadDatasetImages(dataset.id);
       });
-    }, [loadDatasetImages])
+    }, [datasets, loadDatasetImages])
   );
 
   const handleFabPress = () => {
@@ -94,25 +93,28 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 固定ヘッダー */}
+      {/* カスタムヘッダー */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>データセット</Text>
       </View>
       
       {/* メインコンテンツエリア */}
-      <View style={styles.content}>
-        {datasets.length === 0 ? (
-          <Text style={styles.text}>データセットを作成しましょう</Text>
-        ) : (
-          <FlatList
-            data={datasets}
-            renderItem={renderDatasetCard}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </View>
+      {datasets.length === 0 ? (
+        <View style={styles.emptyContent}>
+          <Ionicons name="folder-outline" size={48} color={Colors.text + '40'} />
+          <Text style={styles.emptyText}>データセットがありません</Text>
+          <Text style={styles.emptySubtext}>データセットを作成しましょう</Text>
+        </View>
+      ) : (
+        <FlatList
+          style={styles.content}
+          data={datasets}
+          renderItem={renderDatasetCard}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       
       {/* Floating Action Button */}
       <FloatingActionButton onPress={handleFabPress} />
@@ -143,12 +145,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  text: {
-    color: Colors.text,
-    fontSize: 24,
+  emptyContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    marginTop: -60, // ヘッダー分を考慮して少し上に移動
+  },
+  emptyText: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: Colors.text,
+    marginTop: 16,
     textAlign: 'center',
-    marginTop: 100,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: Colors.text + '60',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   listContainer: {
     paddingBottom: 100, // FABとの重複を避ける
