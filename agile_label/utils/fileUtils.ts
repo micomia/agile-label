@@ -101,19 +101,49 @@ export async function saveMultipleImagesToFiles(images: ImageData[], datasetName
 export async function createAndShareDatasetZip(images: ImageData[], datasetName: string): Promise<boolean> {
   try {
     const tempDir = FileSystem.documentDirectory + `${datasetName}_${Date.now()}/`;
-    await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true });
+    const imgsDir = tempDir + 'imgs/';
+    const labelsDir = tempDir + 'labels/';
     
-    // 各画像をダウンロード
+    // ディレクトリ構造を作成
+    await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true });
+    await FileSystem.makeDirectoryAsync(imgsDir, { intermediates: true });
+    await FileSystem.makeDirectoryAsync(labelsDir, { intermediates: true });
+    
+    // 各画像をimgsフォルダにダウンロード
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       const filename = `${image.label || 'unlabeled'}_${image.id}.jpg`;
-      const fileUri = tempDir + filename;
+      const fileUri = imgsDir + filename;
       
       try {
         await FileSystem.downloadAsync(image.uri, fileUri);
+        
+        // ラベル情報があれば、対応するテキストファイルをlabelsフォルダに作成
+        if (image.label) {
+          const labelFilename = `${image.label}_${image.id}.txt`;
+          const labelFileUri = labelsDir + labelFilename;
+          await FileSystem.writeAsStringAsync(labelFileUri, image.label);
+        }
       } catch (error) {
         console.error(`画像 ${image.id} のダウンロードに失敗:`, error);
       }
+    }
+
+    // classes.txtファイルを作成
+    try {
+      const uniqueLabels = Array.from(new Set(images.filter(img => img.label).map(img => img.label!))).sort();
+      const classesContent = [
+        '# クラス一覧',
+        '# このデータセットに含まれるクラス名のリスト',
+        '',
+        ...uniqueLabels
+      ].join('\n');
+      
+      const classesFilePath = labelsDir + 'classes.txt';
+      await FileSystem.writeAsStringAsync(classesFilePath, classesContent);
+      console.log(`classes.txtを作成しました: ${uniqueLabels.length}個のクラス`);
+    } catch (error) {
+      console.error('classes.txtの作成エラー:', error);
     }
     
     // シェア機能を使用（iOSではファイルアプリに保存可能）
