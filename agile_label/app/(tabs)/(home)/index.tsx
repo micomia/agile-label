@@ -11,15 +11,14 @@ import React from 'react';
 export default function Index() {
   const { datasets, deleteDataset, loadDatasetImages } = useDatasets();
 
-  // 一度だけ全データセットの画像を読み込む
+  // フォーカス時にデータセットの画像を読み込む
   useFocusEffect(
     React.useCallback(() => {
-      // 固定されたIDリストを使用して無限ループを防ぐ
-      const datasetIds = ['1', '2'];
-      datasetIds.forEach(id => {
-        loadDatasetImages(id);
+      // 存在するデータセットのIDのみを使用
+      datasets.forEach(dataset => {
+        loadDatasetImages(dataset.id);
       });
-    }, [loadDatasetImages])
+    }, [datasets, loadDatasetImages])
   );
 
   const handleFabPress = () => {
@@ -102,7 +101,9 @@ export default function Index() {
       {/* メインコンテンツエリア */}
       {datasets.length === 0 ? (
         <View style={styles.emptyContent}>
-          <Text style={styles.text}>データセットを作成しましょう</Text>
+          <Ionicons name="folder-outline" size={48} color={Colors.text + '40'} />
+          <Text style={styles.emptyText}>データセットがありません</Text>
+          <Text style={styles.emptySubtext}>データセットを作成しましょう</Text>
         </View>
       ) : (
         <FlatList
@@ -146,15 +147,24 @@ const styles = StyleSheet.create({
   },
   emptyContent: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    marginTop: -60, // ヘッダー分を考慮して少し上に移動
   },
-  text: {
-    color: Colors.text,
-    fontSize: 24,
+  emptyText: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: Colors.text,
+    marginTop: 16,
     textAlign: 'center',
-    marginTop: 100,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: Colors.text + '60',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   listContainer: {
     paddingBottom: 100, // FABとの重複を避ける
