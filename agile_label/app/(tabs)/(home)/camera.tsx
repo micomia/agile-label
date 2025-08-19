@@ -107,6 +107,8 @@ export default function CameraScreen() {
   const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'move' | 'resize' | null>(null);
   const [resizeHandle, setResizeHandle] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
+  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   
   const cameraRef = useRef<CameraView>(null);
 
@@ -341,9 +343,9 @@ export default function CameraScreen() {
           setResizeHandle('bottomRight');
           return;
         }
-        // BBox内部の場合は移動モード
+        // BBox内部の場合は長押し判定を開始
         else if (x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom) {
-          setEditMode('move');
+          startLongPress(selectedBbox.id);
           return;
         }
       }
@@ -361,6 +363,7 @@ export default function CameraScreen() {
     
     if (clickedBbox) {
       setSelectedBboxId(clickedBbox.id);
+      startLongPress(clickedBbox.id);
       return;
     }
     
@@ -391,6 +394,52 @@ export default function CameraScreen() {
     }
   }
 
+  // 長押し判定開始
+  function startLongPress(bboxId: string) {
+    // 移動用の長押し（500ms）
+    const moveTimer = setTimeout(() => {
+      setEditMode('move');
+      setIsLongPressing(true);
+    }, 500);
+    
+    // 削除用の長押し（1500ms）
+    const deleteTimer = setTimeout(() => {
+      clearTimeout(moveTimer);
+      setIsLongPressing(false);
+      showDeleteAlert(bboxId);
+    }, 1500);
+    
+    setLongPressTimer(deleteTimer);
+  }
+
+  // 長押し判定終了
+  function cancelLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    setIsLongPressing(false);
+  }
+
+  // 削除確認アラート
+  function showDeleteAlert(bboxId: string) {
+    Alert.alert(
+      'BBox削除',
+      'このBBoxを削除しますか？',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          style: 'destructive',
+          onPress: () => deleteBbox(bboxId),
+        },
+      ]
+    );
+  }
+
   // BBox描画中
   function handlePanMove(event: any) {
     const { x, y } = event.nativeEvent;
@@ -404,10 +453,11 @@ export default function CameraScreen() {
       const relativeY = Math.max(0, Math.min(y - imageLayout.y, imageLayout.height));
       
       if (editMode === 'move') {
-        // BBox移動
+        // BBox移動 - 画像境界内に制限
         const deltaX = relativeX - (selectedBbox.x + selectedBbox.width / 2);
         const deltaY = relativeY - (selectedBbox.y + selectedBbox.height / 2);
         
+        // 新しい位置を計算し、画像境界内に制限
         const newX = Math.max(0, Math.min(selectedBbox.x + deltaX, imageLayout.width - selectedBbox.width));
         const newY = Math.max(0, Math.min(selectedBbox.y + deltaY, imageLayout.height - selectedBbox.height));
         
@@ -446,8 +496,11 @@ export default function CameraScreen() {
             break;
         }
         
-        // 最小サイズチェック
-        if (newWidth > 20 && newHeight > 20) {
+        // 最小サイズチェックと画像境界チェック
+        if (newWidth > 20 && newHeight > 20 && 
+            newX >= 0 && newY >= 0 && 
+            newX + newWidth <= imageLayout.width && 
+            newY + newHeight <= imageLayout.height) {
           setBboxes(prev => prev.map(bbox => 
             bbox.id === selectedBboxId 
               ? { ...bbox, x: newX, y: newY, width: newWidth, height: newHeight }
@@ -476,6 +529,9 @@ export default function CameraScreen() {
 
   // BBox描画終了
   function handlePanEnd() {
+    // 長押し判定をキャンセル
+    cancelLongPress();
+    
     // 編集モード終了
     if (editMode) {
       setEditMode(null);
@@ -674,7 +730,7 @@ export default function CameraScreen() {
                     )}
                     
                     {/* BBoxのラベル表示 */}
-                    <TouchableOpacity
+                    <View
                       style={[
                         styles.bboxLabel,
                         {
@@ -683,10 +739,9 @@ export default function CameraScreen() {
                           backgroundColor: bboxColor,
                         }
                       ]}
-                      onLongPress={() => deleteBbox(bbox.id)}
                     >
                       <Text style={styles.bboxLabelText}>{bbox.label || 'object'}</Text>
-                    </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })}
@@ -734,16 +789,11 @@ export default function CameraScreen() {
               アノテーション: {bboxes.length}個
             </Text>
             <Text style={styles.annotationHelp}>
-              タップで選択、ドラッグで移動・リサイズ
+              タップで選択、長押しで移動
             </Text>
             <Text style={styles.annotationHelp}>
-              長押しで削除
+              さらに長押しで削除
             </Text>
-            {history.length > 0 && (
-              <Text style={styles.annotationHelp}>
-                履歴: {history.length}件
-              </Text>
-            )}
           </View>
           
           {/* 現在選択中のクラス表示（画面下部中央） */}
