@@ -107,8 +107,6 @@ export default function CameraScreen() {
   const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'move' | 'resize' | null>(null);
   const [resizeHandle, setResizeHandle] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
-  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
-  const [isLongPressing, setIsLongPressing] = useState(false);
   const [initialTouchPoint, setInitialTouchPoint] = useState<{ x: number; y: number } | null>(null);
   
   const cameraRef = useRef<CameraView>(null);
@@ -379,7 +377,6 @@ export default function CameraScreen() {
       // すでに選択されている場合は移動モードに入る
       if (selectedBboxId === clickedBbox.id) {
         setEditMode('move');
-        setIsLongPressing(true);
         console.log('既に選択されたBBox: 即座に移動モード開始');
       }
       return;
@@ -413,32 +410,7 @@ export default function CameraScreen() {
     }
   }
 
-  // 長押し判定開始
-  function startLongPress(bboxId: string) {
-    // 既存のタイマーをクリア
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-    }
-    
-    // 移動用の長押し（500ms）
-    const moveTimer = setTimeout(() => {
-      setEditMode('move');
-      setIsLongPressing(true);
-      console.log('長押し: 移動モード開始');
-      // 軽いバイブレーション（iOS）があれば追加可能
-    }, 500);
-    
-    setLongPressTimer(moveTimer);
-  }
 
-  // 長押し判定終了
-  function cancelLongPress() {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-    setIsLongPressing(false);
-  }
 
   // 削除確認アラート
   function showDeleteAlert(bboxId: string) {
@@ -481,7 +453,6 @@ export default function CameraScreen() {
           // 5px以上動いたら移動モード開始
           if (deltaX > 5 || deltaY > 5) {
             setEditMode('move');
-            setIsLongPressing(true);
             console.log('移動開始: 指の動きを検出');
           }
         }
@@ -576,9 +547,6 @@ export default function CameraScreen() {
   function handlePanEnd() {
     // 初期タッチポイントをリセット
     setInitialTouchPoint(null);
-    
-    // 長押し判定をキャンセル
-    cancelLongPress();
     
     // 編集モード終了
     if (editMode) {
@@ -753,19 +721,6 @@ export default function CameraScreen() {
                         // タップで選択状態を切り替え
                         setSelectedBboxId(bbox.id);
                         setEditMode(null);
-                        cancelLongPress();
-                      }}
-                      onPressIn={() => {
-                        // 既に選択されている場合は長押し判定をスキップ
-                        if (selectedBboxId !== bbox.id) {
-                          startLongPress(bbox.id);
-                        }
-                      }}
-                      onPressOut={() => {
-                        // タッチ終了時に長押し判定を終了
-                        if (editMode !== 'move') {
-                          cancelLongPress();
-                        }
                       }}
                       activeOpacity={0.7}
                     />
