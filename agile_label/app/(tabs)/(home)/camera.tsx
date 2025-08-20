@@ -775,23 +775,23 @@ export default function CameraScreen() {
                       <>
                         {/* 四隅のリサイズハンドル */}
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x - 6,
-                          top: imageLayout.y + bbox.y - 6,
+                          left: imageLayout.x + bbox.x - 7,
+                          top: imageLayout.y + bbox.y - 7,
                           backgroundColor: bboxColor,
                         }]} />
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x + bbox.width - 6,
-                          top: imageLayout.y + bbox.y - 6,
+                          left: imageLayout.x + bbox.x + bbox.width - 7,
+                          top: imageLayout.y + bbox.y - 7,
                           backgroundColor: bboxColor,
                         }]} />
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x - 6,
-                          top: imageLayout.y + bbox.y + bbox.height - 6,
+                          left: imageLayout.x + bbox.x - 7,
+                          top: imageLayout.y + bbox.y + bbox.height - 7,
                           backgroundColor: bboxColor,
                         }]} />
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x + bbox.width - 6,
-                          top: imageLayout.y + bbox.y + bbox.height - 6,
+                          left: imageLayout.x + bbox.x + bbox.width - 7,
+                          top: imageLayout.y + bbox.y + bbox.height - 7,
                           backgroundColor: bboxColor,
                         }]} />
                       </>
@@ -1159,9 +1159,9 @@ const styles = StyleSheet.create({
   },
   resizeHandle: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2,
     borderColor: 'white',
     backgroundColor: '#007AFF',
