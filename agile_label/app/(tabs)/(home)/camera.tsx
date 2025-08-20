@@ -352,9 +352,11 @@ export default function CameraScreen() {
           setResizeHandle('bottomRight');
           return;
         }
-        // BBox内部の場合は長押し判定を開始
+        // BBox内部の場合は即座に移動モードに入る
         else if (x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom) {
-          startLongPress(selectedBbox.id);
+          setEditMode('move');
+          setIsLongPressing(true);
+          console.log('選択されたBBox: 即座に移動モード開始');
           return;
         }
       }
@@ -371,13 +373,20 @@ export default function CameraScreen() {
     });
     
     if (clickedBbox) {
+      // クリックされたBBoxを選択状態にする
       setSelectedBboxId(clickedBbox.id);
-      startLongPress(clickedBbox.id);
+      
+      // すでに選択されている場合は移動モードに入る
+      if (selectedBboxId === clickedBbox.id) {
+        setEditMode('move');
+        setIsLongPressing(true);
+        console.log('既に選択されたBBox: 即座に移動モード開始');
+      }
       return;
     }
     
     // 新しいBBoxの描画開始
-    setSelectedBboxId(null);
+    setSelectedBboxId(null); // 既存の選択を解除
     setEditMode(null); // 移動モードも終了
     
     // 画像領域内かチェック
@@ -713,15 +722,16 @@ export default function CameraScreen() {
                         }
                       ]}
                       onPress={() => {
-                        // タップで選択/選択解除
-                        setSelectedBboxId(isSelected ? null : bbox.id);
+                        // タップで選択状態を切り替え
+                        setSelectedBboxId(bbox.id);
                         setEditMode(null);
                         cancelLongPress();
                       }}
                       onPressIn={() => {
-                        // タッチ開始時に長押し判定を開始
-                        setSelectedBboxId(bbox.id);
-                        startLongPress(bbox.id);
+                        // 既に選択されている場合は長押し判定をスキップ
+                        if (selectedBboxId !== bbox.id) {
+                          startLongPress(bbox.id);
+                        }
                       }}
                       onPressOut={() => {
                         // タッチ終了時に長押し判定を終了
@@ -830,7 +840,10 @@ export default function CameraScreen() {
             ) : (
               <>
                 <Text style={styles.annotationHelp}>
-                  タップで選択、長押しで移動
+                  タップで選択、ドラッグで移動
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  選択中は四角の丸が表示
                 </Text>
               </>
             )}
