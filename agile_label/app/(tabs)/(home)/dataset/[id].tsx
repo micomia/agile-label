@@ -94,7 +94,7 @@ export default function DatasetDetailScreen() {
         {
           text: '保存',
           onPress: async () => {
-            const success = await createAndShareDatasetZip(dataset.images, dataset.name);
+            const success = await createAndShareDatasetZip(dataset.images, dataset.name, dataset.id);
             if (success) {
               Alert.alert('保存完了', 'ファイルアプリでデータセットを保存できます');
             }
