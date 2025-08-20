@@ -8,6 +8,9 @@ import {
   SafeAreaView,
   Dimensions,
   Image,
+  Modal,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +30,40 @@ interface BBox {
   width: number;
   height: number;
   label?: string;
+}
+
+// 履歴アクションの型定義
+interface HistoryAction {
+  type: 'add' | 'delete';
+  bbox: BBox;
+  timestamp: number;
+}
+
+// クラス毎の色定義
+const CLASS_COLORS: { [key: string]: string } = {
+  'object': '#FF6B6B',    // 赤
+  'person': '#4ECDC4',    // 青緑
+  'vehicle': '#45B7D1',   // 青
+  'animal': '#96CEB4',    // 緑
+  'building': '#FFEAA7',  // 黄
+  'food': '#DDA0DD',      // 紫
+  'tool': '#FFA07A',      // オレンジ
+  'furniture': '#98D8C8', // ミント
+};
+
+// デフォルトカラー（新しいクラス用）
+const DEFAULT_COLORS = ['#FF9F43', '#10AC84', '#A55EEA', '#FD79A8', '#00B894', '#FDCB6E', '#6C5CE7', '#A29BFE'];
+
+// クラス名から色を取得する関数
+function getClassColor(className: string, allClasses: string[]): string {
+  if (CLASS_COLORS[className]) {
+    return CLASS_COLORS[className];
+  }
+  
+  // 新しいクラスの場合、インデックスに基づいて色を決定
+  const index = allClasses.indexOf(className);
+  const colorIndex = index % DEFAULT_COLORS.length;
+  return DEFAULT_COLORS[colorIndex];
 }
 
 // 3:4の縦横比でカメラビューのサイズを計算（縦長）
@@ -56,7 +93,77 @@ export default function CameraScreen() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
   const [imageLayout, setImageLayout] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
+  
+  // クラス管理の状態
+  const [classes, setClasses] = useState<string[]>(['object', 'person', 'vehicle']); // デフォルトクラス
+  const [selectedClass, setSelectedClass] = useState<string>('object');
+  const [showClassModal, setShowClassModal] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+  
+  // 履歴管理の状態
+  const [history, setHistory] = useState<HistoryAction[]>([]);
+  
+  // BBox編集の状態
+  const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState<'move' | 'resize' | null>(null);
+  const [resizeHandle, setResizeHandle] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
+  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
+  const [isLongPressing, setIsLongPressing] = useState(false);
+  
   const cameraRef = useRef<CameraView>(null);
+
+  // データセット固有のクラス情報を読み込み・保存
+  useEffect(() => {
+    loadDatasetClasses();
+  }, [datasetId]);
+
+  async function loadDatasetClasses() {
+    if (!datasetId) return;
+    
+    try {
+      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/`;
+      const classesFile = `${datasetDir}classes.json`;
+      
+      const fileInfo = await FileSystem.getInfoAsync(classesFile);
+      if (fileInfo.exists) {
+        const classesData = await FileSystem.readAsStringAsync(classesFile);
+        const { classes: savedClasses, selectedClass: savedSelectedClass } = JSON.parse(classesData);
+        
+        if (savedClasses && Array.isArray(savedClasses)) {
+          setClasses(savedClasses);
+          if (savedSelectedClass && savedClasses.includes(savedSelectedClass)) {
+            setSelectedClass(savedSelectedClass);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('クラス情報の読み込みエラー:', error);
+    }
+  }
+
+  async function saveDatasetClasses() {
+    if (!datasetId) return;
+    
+    try {
+      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/`;
+      const dirInfo = await FileSystem.getInfoAsync(datasetDir);
+      
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(datasetDir, { intermediates: true });
+      }
+      
+      const classesFile = `${datasetDir}classes.json`;
+      const classesData = {
+        classes,
+        selectedClass,
+        timestamp: new Date().getTime(),
+      };
+      
+      await FileSystem.writeAsStringAsync(classesFile, JSON.stringify(classesData, null, 2));
+    } catch (error) {
+      console.error('クラス情報の保存エラー:', error);
+    }
+  }
 
   useEffect(() => {
     if (!permission) {
@@ -109,6 +216,7 @@ export default function CameraScreen() {
           // プレビュー画面に移行
           setCapturedPhoto(photo.uri);
           setBboxes([]); // BBoxをリセット
+          setHistory([]); // 履歴をリセット
         }
       } catch (error) {
         console.error('写真撮影エラー:', error);
@@ -181,6 +289,7 @@ export default function CameraScreen() {
             onPress: () => {
               setCapturedPhoto(null);
               setBboxes([]);
+              setHistory([]); // 履歴もリセット
             },
           },
         ]
@@ -196,6 +305,7 @@ export default function CameraScreen() {
   function retakePhoto() {
     setCapturedPhoto(null);
     setBboxes([]);
+    setHistory([]); // 履歴もリセット
   }
 
   // BBox描画開始
@@ -203,6 +313,63 @@ export default function CameraScreen() {
     if (!imageLayout) return;
     
     const { x, y } = event.nativeEvent;
+    
+    // 選択されたBBoxがある場合の編集処理
+    if (selectedBboxId) {
+      const selectedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
+      if (selectedBbox) {
+        // リサイズハンドルのチェック
+        const handleSize = 20;
+        const bboxLeft = imageLayout.x + selectedBbox.x;
+        const bboxTop = imageLayout.y + selectedBbox.y;
+        const bboxRight = bboxLeft + selectedBbox.width;
+        const bboxBottom = bboxTop + selectedBbox.height;
+        
+        // 各リサイズハンドルの領域チェック
+        if (Math.abs(x - bboxLeft) <= handleSize && Math.abs(y - bboxTop) <= handleSize) {
+          setEditMode('resize');
+          setResizeHandle('topLeft');
+          return;
+        } else if (Math.abs(x - bboxRight) <= handleSize && Math.abs(y - bboxTop) <= handleSize) {
+          setEditMode('resize');
+          setResizeHandle('topRight');
+          return;
+        } else if (Math.abs(x - bboxLeft) <= handleSize && Math.abs(y - bboxBottom) <= handleSize) {
+          setEditMode('resize');
+          setResizeHandle('bottomLeft');
+          return;
+        } else if (Math.abs(x - bboxRight) <= handleSize && Math.abs(y - bboxBottom) <= handleSize) {
+          setEditMode('resize');
+          setResizeHandle('bottomRight');
+          return;
+        }
+        // BBox内部の場合は長押し判定を開始
+        else if (x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom) {
+          startLongPress(selectedBbox.id);
+          return;
+        }
+      }
+    }
+    
+    // 既存のBBoxの選択チェック
+    const clickedBbox = bboxes.find(bbox => {
+      const bboxLeft = imageLayout.x + bbox.x;
+      const bboxTop = imageLayout.y + bbox.y;
+      const bboxRight = bboxLeft + bbox.width;
+      const bboxBottom = bboxTop + bbox.height;
+      
+      return x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom;
+    });
+    
+    if (clickedBbox) {
+      setSelectedBboxId(clickedBbox.id);
+      startLongPress(clickedBbox.id);
+      return;
+    }
+    
+    // 新しいBBoxの描画開始
+    setSelectedBboxId(null);
+    
     // 画像領域内かチェック
     if (
       x >= imageLayout.x &&
@@ -219,6 +386,7 @@ export default function CameraScreen() {
         y: relativeY,
         width: 0,
         height: 0,
+        label: selectedClass, // 選択中のクラスを設定
       };
       
       setCurrentBbox(newBbox);
@@ -226,11 +394,126 @@ export default function CameraScreen() {
     }
   }
 
+  // 長押し判定開始
+  function startLongPress(bboxId: string) {
+    // 移動用の長押し（500ms）
+    const moveTimer = setTimeout(() => {
+      setEditMode('move');
+      setIsLongPressing(true);
+    }, 500);
+    
+    // 削除用の長押し（1500ms）
+    const deleteTimer = setTimeout(() => {
+      clearTimeout(moveTimer);
+      setIsLongPressing(false);
+      showDeleteAlert(bboxId);
+    }, 1500);
+    
+    setLongPressTimer(deleteTimer);
+  }
+
+  // 長押し判定終了
+  function cancelLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+    setIsLongPressing(false);
+  }
+
+  // 削除確認アラート
+  function showDeleteAlert(bboxId: string) {
+    Alert.alert(
+      'BBox削除',
+      'このBBoxを削除しますか？',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          style: 'destructive',
+          onPress: () => deleteBbox(bboxId),
+        },
+      ]
+    );
+  }
+
   // BBox描画中
   function handlePanMove(event: any) {
+    const { x, y } = event.nativeEvent;
+    
+    // BBox編集モードの処理
+    if (editMode && selectedBboxId && imageLayout) {
+      const selectedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
+      if (!selectedBbox) return;
+      
+      const relativeX = Math.max(0, Math.min(x - imageLayout.x, imageLayout.width));
+      const relativeY = Math.max(0, Math.min(y - imageLayout.y, imageLayout.height));
+      
+      if (editMode === 'move') {
+        // BBox移動 - 画像境界内に制限
+        const deltaX = relativeX - (selectedBbox.x + selectedBbox.width / 2);
+        const deltaY = relativeY - (selectedBbox.y + selectedBbox.height / 2);
+        
+        // 新しい位置を計算し、画像境界内に制限
+        const newX = Math.max(0, Math.min(selectedBbox.x + deltaX, imageLayout.width - selectedBbox.width));
+        const newY = Math.max(0, Math.min(selectedBbox.y + deltaY, imageLayout.height - selectedBbox.height));
+        
+        setBboxes(prev => prev.map(bbox => 
+          bbox.id === selectedBboxId 
+            ? { ...bbox, x: newX, y: newY }
+            : bbox
+        ));
+      } else if (editMode === 'resize' && resizeHandle) {
+        // BBoxリサイズ
+        let newX = selectedBbox.x;
+        let newY = selectedBbox.y;
+        let newWidth = selectedBbox.width;
+        let newHeight = selectedBbox.height;
+        
+        switch (resizeHandle) {
+          case 'topLeft':
+            newWidth = selectedBbox.x + selectedBbox.width - relativeX;
+            newHeight = selectedBbox.y + selectedBbox.height - relativeY;
+            newX = relativeX;
+            newY = relativeY;
+            break;
+          case 'topRight':
+            newWidth = relativeX - selectedBbox.x;
+            newHeight = selectedBbox.y + selectedBbox.height - relativeY;
+            newY = relativeY;
+            break;
+          case 'bottomLeft':
+            newWidth = selectedBbox.x + selectedBbox.width - relativeX;
+            newHeight = relativeY - selectedBbox.y;
+            newX = relativeX;
+            break;
+          case 'bottomRight':
+            newWidth = relativeX - selectedBbox.x;
+            newHeight = relativeY - selectedBbox.y;
+            break;
+        }
+        
+        // 最小サイズチェックと画像境界チェック
+        if (newWidth > 20 && newHeight > 20 && 
+            newX >= 0 && newY >= 0 && 
+            newX + newWidth <= imageLayout.width && 
+            newY + newHeight <= imageLayout.height) {
+          setBboxes(prev => prev.map(bbox => 
+            bbox.id === selectedBboxId 
+              ? { ...bbox, x: newX, y: newY, width: newWidth, height: newHeight }
+              : bbox
+          ));
+        }
+      }
+      return;
+    }
+    
+    // 新しいBBox描画の処理
     if (!isDrawing || !currentBbox || !imageLayout) return;
     
-    const { x, y } = event.nativeEvent;
     const relativeX = Math.max(0, Math.min(x - imageLayout.x, imageLayout.width));
     const relativeY = Math.max(0, Math.min(y - imageLayout.y, imageLayout.height));
     
@@ -246,6 +529,30 @@ export default function CameraScreen() {
 
   // BBox描画終了
   function handlePanEnd() {
+    // 長押し判定をキャンセル
+    cancelLongPress();
+    
+    // 編集モード終了
+    if (editMode) {
+      setEditMode(null);
+      setResizeHandle(null);
+      
+      // 編集の履歴記録（簡略化）
+      if (selectedBboxId) {
+        const editedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
+        if (editedBbox) {
+          const editAction: HistoryAction = {
+            type: 'add', // 編集も追加として扱う
+            bbox: editedBbox,
+            timestamp: Date.now(),
+          };
+          setHistory(prev => [...prev, editAction]);
+        }
+      }
+      return;
+    }
+    
+    // 新しいBBox作成終了
     if (!isDrawing || !currentBbox) return;
     
     // 最小サイズチェック
@@ -257,9 +564,21 @@ export default function CameraScreen() {
         y: currentBbox.height < 0 ? currentBbox.y + currentBbox.height : currentBbox.y,
         width: Math.abs(currentBbox.width),
         height: Math.abs(currentBbox.height),
+        label: currentBbox.label, // ラベルを保持
       };
       
       setBboxes(prev => [...prev, normalizedBbox]);
+      
+      // 履歴に追加アクションを記録
+      const addAction: HistoryAction = {
+        type: 'add',
+        bbox: normalizedBbox,
+        timestamp: Date.now(),
+      };
+      setHistory(prev => [...prev, addAction]);
+      
+      // 新しく作成したBBoxを選択状態にする
+      setSelectedBboxId(normalizedBbox.id);
     }
     
     setCurrentBbox(null);
@@ -268,7 +587,71 @@ export default function CameraScreen() {
 
   // BBox削除
   function deleteBbox(id: string) {
+    const bboxToDelete = bboxes.find(bbox => bbox.id === id);
+    if (!bboxToDelete) return;
+    
     setBboxes(prev => prev.filter(bbox => bbox.id !== id));
+    
+    // 選択状態もクリア
+    if (selectedBboxId === id) {
+      setSelectedBboxId(null);
+    }
+    
+    // 履歴に削除アクションを記録
+    const deleteAction: HistoryAction = {
+      type: 'delete',
+      bbox: bboxToDelete,
+      timestamp: Date.now(),
+    };
+    setHistory(prev => [...prev, deleteAction]);
+  }
+
+  // Undo機能
+  function undoLastAction() {
+    if (history.length === 0) return;
+    
+    const lastAction = history[history.length - 1];
+    
+    if (lastAction.type === 'add') {
+      // 最後に追加されたBBoxを削除
+      setBboxes(prev => prev.filter(bbox => bbox.id !== lastAction.bbox.id));
+    } else if (lastAction.type === 'delete') {
+      // 最後に削除されたBBoxを復元
+      setBboxes(prev => [...prev, lastAction.bbox]);
+    }
+    
+    // 履歴から最後のアクションを削除
+    setHistory(prev => prev.slice(0, -1));
+  }
+
+  // クラス追加
+  function addClass() {
+    if (newClassName.trim() && !classes.includes(newClassName.trim())) {
+      setClasses(prev => [...prev, newClassName.trim()]);
+      setNewClassName('');
+      // クラス情報を保存
+      setTimeout(saveDatasetClasses, 100);
+    }
+  }
+
+  // クラス削除
+  function deleteClass(className: string) {
+    if (classes.length > 1) { // 最低1つのクラスは残す
+      setClasses(prev => prev.filter(c => c !== className));
+      if (selectedClass === className) {
+        setSelectedClass(classes.filter(c => c !== className)[0]);
+      }
+      // クラス情報を保存
+      setTimeout(saveDatasetClasses, 100);
+    }
+  }
+
+  // クラス選択時の処理
+  function selectClass(className: string) {
+    setSelectedClass(className);
+    setShowClassModal(false);
+    // クラス情報を保存
+    setTimeout(saveDatasetClasses, 100);
   }
 
   // プレビュー画面を表示
@@ -299,21 +682,69 @@ export default function CameraScreen() {
           >
             <View style={styles.annotationOverlay}>
               {/* 既存のBBox */}
-              {bboxes.map((bbox) => (
-                <TouchableOpacity
-                  key={bbox.id}
-                  style={[
-                    styles.bbox,
-                    {
-                      left: imageLayout ? imageLayout.x + bbox.x : bbox.x,
-                      top: imageLayout ? imageLayout.y + bbox.y : bbox.y,
-                      width: bbox.width,
-                      height: bbox.height,
-                    }
-                  ]}
-                  onLongPress={() => deleteBbox(bbox.id)}
-                />
-              ))}
+              {bboxes.map((bbox) => {
+                const bboxColor = getClassColor(bbox.label || 'object', classes);
+                const isSelected = selectedBboxId === bbox.id;
+                return (
+                  <View key={bbox.id} style={{ position: 'absolute' }}>
+                    <View
+                      style={[
+                        styles.bbox,
+                        {
+                          left: imageLayout ? imageLayout.x + bbox.x : bbox.x,
+                          top: imageLayout ? imageLayout.y + bbox.y : bbox.y,
+                          width: bbox.width,
+                          height: bbox.height,
+                          borderColor: bboxColor,
+                          backgroundColor: `${bboxColor}30`, // 透明度を追加
+                          borderWidth: isSelected ? 3 : 2, // 選択時は太い枠
+                        }
+                      ]}
+                    />
+                    
+                    {/* 選択時のリサイズハンドル */}
+                    {isSelected && imageLayout && (
+                      <>
+                        {/* 四隅のリサイズハンドル */}
+                        <View style={[styles.resizeHandle, {
+                          left: imageLayout.x + bbox.x - 6,
+                          top: imageLayout.y + bbox.y - 6,
+                          backgroundColor: bboxColor,
+                        }]} />
+                        <View style={[styles.resizeHandle, {
+                          left: imageLayout.x + bbox.x + bbox.width - 6,
+                          top: imageLayout.y + bbox.y - 6,
+                          backgroundColor: bboxColor,
+                        }]} />
+                        <View style={[styles.resizeHandle, {
+                          left: imageLayout.x + bbox.x - 6,
+                          top: imageLayout.y + bbox.y + bbox.height - 6,
+                          backgroundColor: bboxColor,
+                        }]} />
+                        <View style={[styles.resizeHandle, {
+                          left: imageLayout.x + bbox.x + bbox.width - 6,
+                          top: imageLayout.y + bbox.y + bbox.height - 6,
+                          backgroundColor: bboxColor,
+                        }]} />
+                      </>
+                    )}
+                    
+                    {/* BBoxのラベル表示 */}
+                    <View
+                      style={[
+                        styles.bboxLabel,
+                        {
+                          left: imageLayout ? imageLayout.x + bbox.x : bbox.x,
+                          top: imageLayout ? imageLayout.y + bbox.y - 25 : bbox.y - 25,
+                          backgroundColor: bboxColor,
+                        }
+                      ]}
+                    >
+                      <Text style={styles.bboxLabelText}>{bbox.label || 'object'}</Text>
+                    </View>
+                  </View>
+                );
+              })}
               
               {/* 描画中のBBox */}
               {currentBbox && imageLayout && (
@@ -326,6 +757,8 @@ export default function CameraScreen() {
                       top: imageLayout.y + currentBbox.y,
                       width: currentBbox.width,
                       height: currentBbox.height,
+                      borderColor: getClassColor(selectedClass, classes),
+                      backgroundColor: `${getClassColor(selectedClass, classes)}30`,
                     }
                   ]}
                 />
@@ -338,15 +771,48 @@ export default function CameraScreen() {
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           
+          {/* Undoボタン（左下） */}
+          <TouchableOpacity 
+            style={[
+              styles.undoButton, 
+              { opacity: history.length > 0 ? 1 : 0.5 }
+            ]} 
+            onPress={undoLastAction}
+            disabled={history.length === 0}
+          >
+            <Ionicons name="arrow-undo" size={24} color="white" />
+          </TouchableOpacity>
+          
           {/* アノテーション情報表示 */}
           <View style={styles.annotationInfo}>
             <Text style={styles.annotationText}>
               アノテーション: {bboxes.length}個
             </Text>
             <Text style={styles.annotationHelp}>
-              タップ&ドラッグでBBox作成、長押しで削除
+              タップで選択、長押しで移動
+            </Text>
+            <Text style={styles.annotationHelp}>
+              さらに長押しで削除
             </Text>
           </View>
+          
+          {/* 現在選択中のクラス表示（画面下部中央） */}
+          <TouchableOpacity 
+            style={[
+              styles.classSelector,
+              { backgroundColor: `${getClassColor(selectedClass, classes)}CC` } // 80%透明度
+            ]}
+            onPress={() => setShowClassModal(true)}
+          >
+            <View 
+              style={[
+                styles.classColorIndicator,
+                { backgroundColor: getClassColor(selectedClass, classes) }
+              ]}
+            />
+            <Text style={styles.classSelectorText}>クラス: {selectedClass}</Text>
+            <Ionicons name="chevron-up" size={16} color="white" />
+          </TouchableOpacity>
           
           {/* 保存ボタン（右下） */}
           <TouchableOpacity
@@ -355,6 +821,83 @@ export default function CameraScreen() {
           >
             <Ionicons name="checkmark" size={32} color="white" />
           </TouchableOpacity>
+          
+          {/* クラス選択モーダル */}
+          <Modal
+            visible={showClassModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowClassModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>クラス選択</Text>
+                  <TouchableOpacity onPress={() => setShowClassModal(false)}>
+                    <Ionicons name="close" size={24} color="black" />
+                  </TouchableOpacity>
+                </View>
+                
+                <ScrollView style={styles.classList}>
+                  {classes.map((className) => {
+                    const classColor = getClassColor(className, classes);
+                    return (
+                      <View key={className} style={styles.classItem}>
+                        <TouchableOpacity
+                          style={[
+                            styles.classButton,
+                            selectedClass === className && styles.classButtonSelected,
+                            selectedClass === className && { backgroundColor: classColor }
+                          ]}
+                          onPress={() => selectClass(className)}
+                        >
+                          <View style={styles.classButtonContent}>
+                            <View 
+                              style={[
+                                styles.classColorIndicator,
+                                { backgroundColor: classColor }
+                              ]}
+                            />
+                            <Text style={[
+                              styles.classButtonText,
+                              selectedClass === className && styles.classButtonTextSelected
+                            ]}>
+                              {className}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                        
+                        {classes.length > 1 && (
+                          <TouchableOpacity
+                            style={styles.deleteClassButton}
+                            onPress={() => deleteClass(className)}
+                          >
+                            <Ionicons name="trash" size={16} color="#FF6B6B" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+                
+                <View style={styles.addClassSection}>
+                  <TextInput
+                    style={styles.classInput}
+                    placeholder="新しいクラス名"
+                    value={newClassName}
+                    onChangeText={setNewClassName}
+                    onSubmitEditing={addClass}
+                  />
+                  <TouchableOpacity
+                    style={styles.addClassButton}
+                    onPress={addClass}
+                  >
+                    <Ionicons name="add" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
       </GestureHandlerRootView>
     );
@@ -494,6 +1037,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  undoButton: {
+    position: 'absolute',
+    bottom: 60,
+    left: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   saveButton: {
     position: 'absolute',
     bottom: 60,
@@ -516,12 +1070,20 @@ const styles = StyleSheet.create({
   bbox: {
     position: 'absolute',
     borderWidth: 2,
-    borderColor: '#FF6B6B',
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    borderColor: '#FF6B6B', // デフォルト色（動的に上書きされる）
+    backgroundColor: 'rgba(255, 107, 107, 0.2)', // デフォルト色（動的に上書きされる）
   },
   currentBbox: {
-    borderColor: '#4ECDC4',
-    backgroundColor: 'rgba(78, 205, 196, 0.2)',
+    // 動的に色が設定されるため、ここでは色を指定しない
+  },
+  resizeHandle: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: 'white',
+    backgroundColor: '#007AFF',
   },
   annotationInfo: {
     position: 'absolute',
@@ -540,5 +1102,131 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     marginTop: 4,
+  },
+  // BBoxラベル用のスタイル
+  bboxLabel: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 107, 107, 0.9)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  bboxLabelText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  // クラス選択用のスタイル
+  classSelector: {
+    position: 'absolute',
+    bottom: 120,
+    left: '50%',
+    transform: [{ translateX: -75 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  classColorIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  classSelectorText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  // モーダル用のスタイル
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    paddingTop: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  classList: {
+    maxHeight: 200,
+    paddingHorizontal: 20,
+  },
+  classItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  classButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    marginRight: 8,
+  },
+  classButtonSelected: {
+    backgroundColor: '#007AFF',
+  },
+  classButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  classButtonText: {
+    fontSize: 16,
+    color: 'black',
+    textAlign: 'center',
+  },
+  classButtonTextSelected: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  deleteClassButton: {
+    padding: 8,
+  },
+  addClassSection: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    gap: 10,
+  },
+  classInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  addClassButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
