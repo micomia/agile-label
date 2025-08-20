@@ -121,20 +121,26 @@ export default function CameraScreen() {
     if (!datasetId) return;
     
     try {
-      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/`;
-      const classesFile = `${datasetDir}classes.json`;
+      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/`;
+      const classesFile = `${datasetDir}classes.txt`;
       
       const fileInfo = await FileSystem.getInfoAsync(classesFile);
       if (fileInfo.exists) {
-        const classesData = await FileSystem.readAsStringAsync(classesFile);
-        const { classes: savedClasses, selectedClass: savedSelectedClass } = JSON.parse(classesData);
+        const classesContent = await FileSystem.readAsStringAsync(classesFile);
+        const loadedClasses = classesContent
+          .split('\n')
+          .filter(line => line.trim() && !line.startsWith('#'))
+          .map(line => line.trim());
         
-        if (savedClasses && Array.isArray(savedClasses)) {
-          setClasses(savedClasses);
-          if (savedSelectedClass && savedClasses.includes(savedSelectedClass)) {
-            setSelectedClass(savedSelectedClass);
-          }
+        if (loadedClasses.length > 0) {
+          console.log(`[カメラ] classes.txtから読み込んだクラス:`, loadedClasses);
+          setClasses(loadedClasses);
+          setSelectedClass(loadedClasses[0]); // 最初のクラスを選択
+        } else {
+          console.log('[カメラ] classes.txtにクラスが見つからないため、デフォルトクラスを使用');
         }
+      } else {
+        console.log('[カメラ] classes.txtが存在しないため、デフォルトクラスを使用');
       }
     } catch (error) {
       console.error('クラス情報の読み込みエラー:', error);
@@ -145,21 +151,24 @@ export default function CameraScreen() {
     if (!datasetId) return;
     
     try {
-      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/`;
+      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/`;
       const dirInfo = await FileSystem.getInfoAsync(datasetDir);
       
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(datasetDir, { intermediates: true });
       }
       
-      const classesFile = `${datasetDir}classes.json`;
-      const classesData = {
-        classes,
-        selectedClass,
-        timestamp: new Date().getTime(),
-      };
+      // classes.txtファイルを更新
+      const classesFile = `${datasetDir}classes.txt`;
+      const content = [
+        '# クラス一覧',
+        '# 画像にラベルを付けると、ここに自動的にクラス名が追加されます',
+        '',
+        ...classes.sort()
+      ].join('\n');
       
-      await FileSystem.writeAsStringAsync(classesFile, JSON.stringify(classesData, null, 2));
+      await FileSystem.writeAsStringAsync(classesFile, content);
+      console.log(`[カメラ] classes.txtを更新しました: ${classes.length}個のクラス`, classes);
     } catch (error) {
       console.error('クラス情報の保存エラー:', error);
     }
