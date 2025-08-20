@@ -109,6 +109,7 @@ export default function CameraScreen() {
   const [resizeHandle, setResizeHandle] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
   const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
   const [isLongPressing, setIsLongPressing] = useState(false);
+  const [initialTouchPoint, setInitialTouchPoint] = useState<{ x: number; y: number } | null>(null);
   
   const cameraRef = useRef<CameraView>(null);
 
@@ -322,6 +323,7 @@ export default function CameraScreen() {
     if (!imageLayout) return;
     
     const { x, y } = event.nativeEvent;
+    setInitialTouchPoint({ x, y });
     
     // 選択されたBBoxがある場合の編集処理
     if (selectedBboxId) {
@@ -352,11 +354,9 @@ export default function CameraScreen() {
           setResizeHandle('bottomRight');
           return;
         }
-        // BBox内部の場合は即座に移動モードに入る
+        // BBox内部の場合は移動の準備をする（まだ移動モードには入らない）
         else if (x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom) {
-          setEditMode('move');
-          setIsLongPressing(true);
-          console.log('選択されたBBox: 即座に移動モード開始');
+          console.log('選択されたBBox: 移動の準備');
           return;
         }
       }
@@ -463,6 +463,31 @@ export default function CameraScreen() {
   function handlePanMove(event: any) {
     const { x, y } = event.nativeEvent;
     
+    // 選択されたBBoxがあり、まだ編集モードでない場合の移動開始判定
+    if (selectedBboxId && !editMode && initialTouchPoint && imageLayout) {
+      const selectedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
+      if (selectedBbox) {
+        const bboxLeft = imageLayout.x + selectedBbox.x;
+        const bboxTop = imageLayout.y + selectedBbox.y;
+        const bboxRight = bboxLeft + selectedBbox.width;
+        const bboxBottom = bboxTop + selectedBbox.height;
+        
+        // 初期タッチ位置がBBox内で、少しでも動いたら移動モード開始
+        if (initialTouchPoint.x >= bboxLeft && initialTouchPoint.x <= bboxRight && 
+            initialTouchPoint.y >= bboxTop && initialTouchPoint.y <= bboxBottom) {
+          const deltaX = Math.abs(x - initialTouchPoint.x);
+          const deltaY = Math.abs(y - initialTouchPoint.y);
+          
+          // 5px以上動いたら移動モード開始
+          if (deltaX > 5 || deltaY > 5) {
+            setEditMode('move');
+            setIsLongPressing(true);
+            console.log('移動開始: 指の動きを検出');
+          }
+        }
+      }
+    }
+    
     // BBox編集モードの処理
     if (editMode && selectedBboxId && imageLayout) {
       const selectedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
@@ -549,6 +574,9 @@ export default function CameraScreen() {
 
   // BBox描画終了
   function handlePanEnd() {
+    // 初期タッチポイントをリセット
+    setInitialTouchPoint(null);
+    
     // 長押し判定をキャンセル
     cancelLongPress();
     
