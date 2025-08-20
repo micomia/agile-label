@@ -664,24 +664,39 @@ export default function CameraScreen() {
   if (capturedPhoto) {
     return (
       <GestureHandlerRootView style={styles.container}>
-        <View style={styles.container}>
-          {/* プレビュー画像 */}
-          <Image 
-            source={{ uri: capturedPhoto }} 
-            style={styles.previewImage}
+        {/* 上部の黒い帯 */}
+        <View style={styles.topBar}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.headerButton} onPress={retakePhoto}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>プレビュー</Text>
+            <View style={styles.headerButton} />
+          </View>
+        </View>
+
+        {/* プレビュー画像を中央に3:4で表示 */}
+        <View style={styles.cameraContainer}>
+          <Image
+            source={{ uri: capturedPhoto }}
+            style={{
+              width: adjustedCameraWidth,
+              height: adjustedCameraHeight,
+              resizeMode: 'contain',
+              borderRadius: 8,
+            }}
             onLayout={(event) => {
               const { width, height, x, y } = event.nativeEvent.layout;
               setImageLayout({ width, height, x, y });
             }}
           />
-          
           {/* アノテーション用のオーバーレイ */}
           <PanGestureHandler
             onGestureEvent={handlePanMove}
             onHandlerStateChange={(event) => {
-              if (event.nativeEvent.state === 4) { // BEGAN
+              if (event.nativeEvent.state === 4) {
                 handlePanStart(event);
-              } else if (event.nativeEvent.state === 5) { // END
+              } else if (event.nativeEvent.state === 5) {
                 handlePanEnd();
               }
             }}
@@ -783,156 +798,110 @@ export default function CameraScreen() {
               )}
             </View>
           </PanGestureHandler>
-          
-          {/* 戻るボタン（左上） */}
-          <TouchableOpacity style={styles.retakeButton} onPress={retakePhoto}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          
-          {/* Undoボタン（左下） */}
+        </View>
+
+        {/* 下部の黒い帯 */}
+        <View style={styles.bottomBar}>
+          {/* Undoボタン・保存ボタン・クラス選択など既存の内容を配置 */}
           <TouchableOpacity 
-            style={[
-              styles.undoButton, 
-              { opacity: history.length > 0 ? 1 : 0.5 }
-            ]} 
+            style={[styles.undoButton, { opacity: history.length > 0 ? 1 : 0.5 }]} 
             onPress={undoLastAction}
             disabled={history.length === 0}
           >
             <Ionicons name="arrow-undo" size={24} color="white" />
           </TouchableOpacity>
-          
-          {/* アノテーション情報表示 */}
-          <View style={styles.annotationInfo}>
-            <Text style={styles.annotationText}>
-              アノテーション: {bboxes.length}個
-            </Text>
-            {editMode === 'move' ? (
-              <>
-                <Text style={[styles.annotationHelp, { color: '#FFD700' }]}>
-                  移動モード: ドラッグして移動
-                </Text>
-                <Text style={styles.annotationHelp}>
-                  タップで移動終了
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.annotationHelp}>
-                  タップで選択、ドラッグで移動
-                </Text>
-                <Text style={styles.annotationHelp}>
-                  長押しで削除
-                </Text>
-                <Text style={styles.annotationHelp}>
-                  選択中は四角の丸が表示
-                </Text>
-              </>
-            )}
-          </View>
-          
-          {/* 現在選択中のクラス表示（画面下部中央） */}
-          <TouchableOpacity 
-            style={[
-              styles.classSelector,
-              { backgroundColor: `${getClassColor(selectedClass, classes)}CC` } // 80%透明度
-            ]}
-            onPress={() => setShowClassModal(true)}
-          >
-            <View 
-              style={[
-                styles.classColorIndicator,
-                { backgroundColor: getClassColor(selectedClass, classes) }
-              ]}
-            />
-            <Text style={styles.classSelectorText}>クラス: {selectedClass}</Text>
-            <Ionicons name="chevron-up" size={16} color="white" />
-          </TouchableOpacity>
-          
-          {/* 保存ボタン（右下） */}
           <TouchableOpacity
             style={styles.saveButton}
             onPress={() => savePhotoToDataset(capturedPhoto)}
           >
             <Ionicons name="checkmark" size={32} color="white" />
           </TouchableOpacity>
-          
-          {/* クラス選択モーダル */}
-          <Modal
-            visible={showClassModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowClassModal(false)}
+          <TouchableOpacity 
+            style={[styles.classSelector, { backgroundColor: `${getClassColor(selectedClass, classes)}CC` }]} 
+            onPress={() => setShowClassModal(true)}
           >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>クラス選択</Text>
-                  <TouchableOpacity onPress={() => setShowClassModal(false)}>
-                    <Ionicons name="close" size={24} color="black" />
-                  </TouchableOpacity>
-                </View>
-                
-                <ScrollView style={styles.classList}>
-                  {classes.map((className) => {
-                    const classColor = getClassColor(className, classes);
-                    return (
-                      <View key={className} style={styles.classItem}>
+            <View style={[styles.classColorIndicator, { backgroundColor: getClassColor(selectedClass, classes) }]} />
+            <Text style={styles.classSelectorText}>クラス: {selectedClass}</Text>
+            <Ionicons name="chevron-up" size={16} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        {/* クラス選択モーダル */}
+        <Modal
+          visible={showClassModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowClassModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>クラス選択</Text>
+                <TouchableOpacity onPress={() => setShowClassModal(false)}>
+                  <Ionicons name="close" size={24} color="black" />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.classList}>
+                {classes.map((className) => {
+                  const classColor = getClassColor(className, classes);
+                  return (
+                    <View key={className} style={styles.classItem}>
+                      <TouchableOpacity
+                        style={[
+                          styles.classButton,
+                          selectedClass === className && styles.classButtonSelected,
+                          selectedClass === className && { backgroundColor: classColor }
+                        ]}
+                        onPress={() => selectClass(className)}
+                      >
+                        <View style={styles.classButtonContent}>
+                          <View 
+                            style={[
+                              styles.classColorIndicator,
+                              { backgroundColor: classColor }
+                            ]}
+                          />
+                          <Text style={[
+                            styles.classButtonText,
+                            selectedClass === className && styles.classButtonTextSelected
+                          ]}>
+                            {className}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      
+                      {classes.length > 1 && (
                         <TouchableOpacity
-                          style={[
-                            styles.classButton,
-                            selectedClass === className && styles.classButtonSelected,
-                            selectedClass === className && { backgroundColor: classColor }
-                          ]}
-                          onPress={() => selectClass(className)}
+                          style={styles.deleteClassButton}
+                          onPress={() => deleteClass(className)}
                         >
-                          <View style={styles.classButtonContent}>
-                            <View 
-                              style={[
-                                styles.classColorIndicator,
-                                { backgroundColor: classColor }
-                              ]}
-                            />
-                            <Text style={[
-                              styles.classButtonText,
-                              selectedClass === className && styles.classButtonTextSelected
-                            ]}>
-                              {className}
-                            </Text>
-                          </View>
+                          <Ionicons name="trash" size={16} color="#FF6B6B" />
                         </TouchableOpacity>
-                        
-                        {classes.length > 1 && (
-                          <TouchableOpacity
-                            style={styles.deleteClassButton}
-                            onPress={() => deleteClass(className)}
-                          >
-                            <Ionicons name="trash" size={16} color="#FF6B6B" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-                
-                <View style={styles.addClassSection}>
-                  <TextInput
-                    style={styles.classInput}
-                    placeholder="新しいクラス名"
-                    value={newClassName}
-                    onChangeText={setNewClassName}
-                    onSubmitEditing={addClass}
-                  />
-                  <TouchableOpacity
-                    style={styles.addClassButton}
-                    onPress={addClass}
-                  >
-                    <Ionicons name="add" size={24} color="white" />
-                  </TouchableOpacity>
-                </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              
+              <View style={styles.addClassSection}>
+                <TextInput
+                  style={styles.classInput}
+                  placeholder="新しいクラス名"
+                  value={newClassName}
+                  onChangeText={setNewClassName}
+                  onSubmitEditing={addClass}
+                />
+                <TouchableOpacity
+                  style={styles.addClassButton}
+                  onPress={addClass}
+                >
+                  <Ionicons name="add" size={24} color="white" />
+                </TouchableOpacity>
               </View>
             </View>
-          </Modal>
-        </View>
+          </View>
+        </Modal>
       </GestureHandlerRootView>
     );
   }
