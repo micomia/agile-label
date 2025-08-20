@@ -13,18 +13,51 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
-import { ImageData } from '../contexts/DatasetContext';
+import { ImageData, BBox } from '../contexts/DatasetContext';
 import { saveImageToFiles } from '../utils/fileUtils';
 
 interface ImageGalleryProps {
   images: ImageData[];
+  onDeleteBbox?: (imageId: string, bboxId: string) => void; // bbox削除コールバック
 }
 
 const { width: screenWidth } = Dimensions.get('window');
 const itemSize = screenWidth / 3; // 3列表示、間隔なし
 
-export function ImageGallery({ images }: ImageGalleryProps) {
+// クラス毎の色定義
+const CLASS_COLORS: { [key: string]: string } = {
+  'object': '#FF6B6B',    // 赤
+  'person': '#4ECDC4',    // 青緑
+  'vehicle': '#45B7D1',   // 青
+  'animal': '#96CEB4',    // 緑
+  'building': '#FFEAA7',  // 黄
+  'food': '#DDA0DD',      // 紫
+  'tool': '#FFA07A',      // オレンジ
+  'furniture': '#98D8C8', // ミント
+};
+
+// デフォルトカラー（新しいクラス用）
+const DEFAULT_COLORS = ['#FF9F43', '#10AC84', '#A55EEA', '#FD79A8', '#00B894', '#FDCB6E', '#6C5CE7', '#A29BFE'];
+
+// クラス名から色を取得する関数
+function getClassColor(className: string): string {
+  if (CLASS_COLORS[className]) {
+    return CLASS_COLORS[className];
+  }
+  // 新しいクラスの場合、文字列のハッシュに基づいて色を決定
+  let hash = 0;
+  for (let i = 0; i < className.length; i++) {
+    const char = className.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 32bit整数に変換
+  }
+  const colorIndex = Math.abs(hash) % DEFAULT_COLORS.length;
+  return DEFAULT_COLORS[colorIndex];
+}
+
+export function ImageGallery({ images, onDeleteBbox }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [imageLayout, setImageLayout] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
   const modalFlatListRef = useRef<FlatList>(null);
 
   const handleSaveImage = async (image: ImageData) => {
@@ -49,6 +82,28 @@ export function ImageGallery({ images }: ImageGalleryProps) {
     );
   };
 
+  const handleDeleteBbox = (imageId: string, bboxId: string) => {
+    Alert.alert(
+      'BBox削除',
+      'このバウンディングボックスを削除しますか？',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel'
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: () => {
+            if (onDeleteBbox) {
+              onDeleteBbox(imageId, bboxId);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderImageItem = ({ item, index }: { item: ImageData; index: number }) => (
     <TouchableOpacity
       style={styles.imageItem}
@@ -65,6 +120,14 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         <View style={styles.labelOverlay}>
           <Text style={styles.labelText} numberOfLines={1}>
             {item.label}
+          </Text>
+        </View>
+      )}
+      {item.bboxes && item.bboxes.length > 0 && (
+        <View style={styles.bboxCountOverlay}>
+          <Ionicons name="square-outline" size={12} color="#ffffff" />
+          <Text style={styles.bboxCountText}>
+            {item.bboxes.length}
           </Text>
         </View>
       )}
@@ -140,11 +203,66 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               }}
               renderItem={({ item }) => (
                 <View style={styles.modalImageContainer}>
-                  <Image
-                    source={{ uri: item.uri }}
-                    style={styles.fullImage}
-                    resizeMode="contain"
-                  />
+                  <View style={styles.imageContainer}>
+                    <Image
+                      source={{ uri: item.uri }}
+                      style={styles.fullImage}
+                      resizeMode="contain"
+                      onLayout={(event) => {
+                        const { width, height, x, y } = event.nativeEvent.layout;
+                        setImageLayout({ width, height, x, y });
+                      }}
+                    />
+                    
+                    {/* BBoxオーバーレイ */}
+                    {item.bboxes && item.bboxes.length > 0 && imageLayout && (
+                      <View style={styles.bboxOverlay}>
+                        {item.bboxes.map((bbox: BBox) => {
+                          const bboxColor = getClassColor(bbox.label || 'object');
+                          // bboxの座標は画像の実際のサイズに対する相対位置として保存されているため、
+                          // 表示される画像のサイズに合わせてスケーリングする
+                          const scaledX = (bbox.x / 100) * imageLayout.width;
+                          const scaledY = (bbox.y / 100) * imageLayout.height;
+                          const scaledWidth = (bbox.width / 100) * imageLayout.width;
+                          const scaledHeight = (bbox.height / 100) * imageLayout.height;
+                          
+                          return (
+                            <TouchableOpacity
+                              key={bbox.id}
+                              style={[
+                                styles.bbox,
+                                {
+                                  left: scaledX,
+                                  top: scaledY,
+                                  width: scaledWidth,
+                                  height: scaledHeight,
+                                  borderColor: bboxColor,
+                                  backgroundColor: `${bboxColor}30`,
+                                }
+                              ]}
+                              onLongPress={() => {
+                                handleDeleteBbox(item.id, bbox.id);
+                              }}
+                              delayLongPress={800}
+                              activeOpacity={0.7}
+                            >
+                              {/* BBoxラベル */}
+                              <View
+                                style={[
+                                  styles.bboxLabel,
+                                  { backgroundColor: bboxColor }
+                                ]}
+                              >
+                                <Text style={styles.bboxLabelText}>
+                                  {bbox.label || 'object'}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
                   
                   <View style={styles.imageInfo}>
                     {item.label && (
@@ -155,6 +273,14 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                       </View>
                     )}
                     
+                    {item.bboxes && item.bboxes.length > 0 && (
+                      <View style={styles.infoRow}>
+                        <Ionicons name="square-outline" size={20} color="#ffffff" />
+                        <Text style={styles.infoLabel}>BBox</Text>
+                        <Text style={styles.infoValue}>{item.bboxes.length}個</Text>
+                      </View>
+                    )}
+                    
                     <View style={styles.infoRow}>
                       <Ionicons name="calendar-outline" size={20} color="#ffffff" />
                       <Text style={styles.infoLabel}>撮影日時</Text>
@@ -162,6 +288,14 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                         {item.createdAt.toLocaleDateString('ja-JP')} {item.createdAt.toLocaleTimeString('ja-JP')}
                       </Text>
                     </View>
+                    
+                    {item.bboxes && item.bboxes.length > 0 && (
+                      <View style={styles.bboxHelp}>
+                        <Text style={styles.bboxHelpText}>
+                          長押しでBBoxを削除
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               )}
@@ -201,6 +335,23 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 10,
     fontWeight: '500',
+  },
+  bboxCountOverlay: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bboxCountText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginLeft: 2,
   },
   emptyState: {
     flex: 1,
@@ -248,9 +399,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  imageContainer: {
+    position: 'relative',
+    width: screenWidth,
+    height: '70%',
+  },
   fullImage: {
     width: screenWidth,
     height: '70%',
+  },
+  bboxOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  bbox: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+  },
+  bboxLabel: {
+    position: 'absolute',
+    top: -25,
+    left: 0,
+    backgroundColor: 'rgba(255, 107, 107, 0.9)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  bboxLabelText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   imageInfo: {
     padding: 20,
@@ -271,6 +454,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
     fontWeight: '500',
+    opacity: 0.8,
+  },
+  bboxHelp: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+  },
+  bboxHelpText: {
+    fontSize: 12,
+    color: '#ffffff',
+    textAlign: 'center',
     opacity: 0.8,
   },
 });

@@ -17,20 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
-import { useDatasets } from '../../../contexts/DatasetContext';
+import { useDatasets, BBox } from '../../../contexts/DatasetContext';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 
 const { width, height } = Dimensions.get('window');
-
-// BBoxの型定義
-interface BBox {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label?: string;
-}
 
 // 履歴アクションの型定義
 interface HistoryAction {
@@ -107,8 +97,7 @@ export default function CameraScreen() {
   const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'move' | 'resize' | null>(null);
   const [resizeHandle, setResizeHandle] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
-  const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
-  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [initialTouchPoint, setInitialTouchPoint] = useState<{ x: number; y: number } | null>(null);
   
   const cameraRef = useRef<CameraView>(null);
 
@@ -286,7 +275,7 @@ export default function CameraScreen() {
       // DatasetContextを更新
       if (datasetId) {
         console.log('DatasetContextに画像を追加:', datasetId, destinationUri);
-        await addImageToDataset(datasetId, destinationUri);
+        await addImageToDataset(datasetId, destinationUri, bboxes);
       }
 
       Alert.alert(
@@ -322,6 +311,7 @@ export default function CameraScreen() {
     if (!imageLayout) return;
     
     const { x, y } = event.nativeEvent;
+    setInitialTouchPoint({ x, y });
     
     // 選択されたBBoxがある場合の編集処理
     if (selectedBboxId) {
@@ -352,9 +342,9 @@ export default function CameraScreen() {
           setResizeHandle('bottomRight');
           return;
         }
-        // BBox内部の場合は長押し判定を開始
+        // BBox内部の場合は移動の準備をする（まだ移動モードには入らない）
         else if (x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom) {
-          startLongPress(selectedBbox.id);
+          console.log('選択されたBBox: 移動の準備');
           return;
         }
       }
@@ -371,13 +361,20 @@ export default function CameraScreen() {
     });
     
     if (clickedBbox) {
+      // クリックされたBBoxを選択状態にする
       setSelectedBboxId(clickedBbox.id);
-      startLongPress(clickedBbox.id);
+      
+      // すでに選択されている場合は移動モードに入る
+      if (selectedBboxId === clickedBbox.id) {
+        setEditMode('move');
+        console.log('既に選択されたBBox: 即座に移動モード開始');
+      }
       return;
     }
     
     // 新しいBBoxの描画開始
-    setSelectedBboxId(null);
+    setSelectedBboxId(null); // 既存の選択を解除
+    setEditMode(null); // 移動モードも終了
     
     // 画像領域内かチェック
     if (
@@ -403,32 +400,7 @@ export default function CameraScreen() {
     }
   }
 
-  // 長押し判定開始
-  function startLongPress(bboxId: string) {
-    // 移動用の長押し（500ms）
-    const moveTimer = setTimeout(() => {
-      setEditMode('move');
-      setIsLongPressing(true);
-    }, 500);
-    
-    // 削除用の長押し（1500ms）
-    const deleteTimer = setTimeout(() => {
-      clearTimeout(moveTimer);
-      setIsLongPressing(false);
-      showDeleteAlert(bboxId);
-    }, 1500);
-    
-    setLongPressTimer(deleteTimer);
-  }
 
-  // 長押し判定終了
-  function cancelLongPress() {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      setLongPressTimer(null);
-    }
-    setIsLongPressing(false);
-  }
 
   // 削除確認アラート
   function showDeleteAlert(bboxId: string) {
@@ -453,6 +425,30 @@ export default function CameraScreen() {
   function handlePanMove(event: any) {
     const { x, y } = event.nativeEvent;
     
+    // 選択されたBBoxがあり、まだ編集モードでない場合の移動開始判定
+    if (selectedBboxId && !editMode && initialTouchPoint && imageLayout) {
+      const selectedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
+      if (selectedBbox) {
+        const bboxLeft = imageLayout.x + selectedBbox.x;
+        const bboxTop = imageLayout.y + selectedBbox.y;
+        const bboxRight = bboxLeft + selectedBbox.width;
+        const bboxBottom = bboxTop + selectedBbox.height;
+        
+        // 初期タッチ位置がBBox内で、少しでも動いたら移動モード開始
+        if (initialTouchPoint.x >= bboxLeft && initialTouchPoint.x <= bboxRight && 
+            initialTouchPoint.y >= bboxTop && initialTouchPoint.y <= bboxBottom) {
+          const deltaX = Math.abs(x - initialTouchPoint.x);
+          const deltaY = Math.abs(y - initialTouchPoint.y);
+          
+          // 5px以上動いたら移動モード開始
+          if (deltaX > 5 || deltaY > 5) {
+            setEditMode('move');
+            console.log('移動開始: 指の動きを検出');
+          }
+        }
+      }
+    }
+    
     // BBox編集モードの処理
     if (editMode && selectedBboxId && imageLayout) {
       const selectedBbox = bboxes.find(bbox => bbox.id === selectedBboxId);
@@ -463,12 +459,13 @@ export default function CameraScreen() {
       
       if (editMode === 'move') {
         // BBox移動 - 画像境界内に制限
-        const deltaX = relativeX - (selectedBbox.x + selectedBbox.width / 2);
-        const deltaY = relativeY - (selectedBbox.y + selectedBbox.height / 2);
+        // タッチポイントを基準にBBoxの中心を移動
+        const newCenterX = relativeX;
+        const newCenterY = relativeY;
         
-        // 新しい位置を計算し、画像境界内に制限
-        const newX = Math.max(0, Math.min(selectedBbox.x + deltaX, imageLayout.width - selectedBbox.width));
-        const newY = Math.max(0, Math.min(selectedBbox.y + deltaY, imageLayout.height - selectedBbox.height));
+        // BBoxの新しい左上位置を計算
+        const newX = Math.max(0, Math.min(newCenterX - selectedBbox.width / 2, imageLayout.width - selectedBbox.width));
+        const newY = Math.max(0, Math.min(newCenterY - selectedBbox.height / 2, imageLayout.height - selectedBbox.height));
         
         setBboxes(prev => prev.map(bbox => 
           bbox.id === selectedBboxId 
@@ -538,8 +535,8 @@ export default function CameraScreen() {
 
   // BBox描画終了
   function handlePanEnd() {
-    // 長押し判定をキャンセル
-    cancelLongPress();
+    // 初期タッチポイントをリセット
+    setInitialTouchPoint(null);
     
     // 編集モード終了
     if (editMode) {
@@ -696,7 +693,7 @@ export default function CameraScreen() {
                 const isSelected = selectedBboxId === bbox.id;
                 return (
                   <View key={bbox.id} style={{ position: 'absolute' }}>
-                    <View
+                    <TouchableOpacity
                       style={[
                         styles.bbox,
                         {
@@ -707,8 +704,20 @@ export default function CameraScreen() {
                           borderColor: bboxColor,
                           backgroundColor: `${bboxColor}30`, // 透明度を追加
                           borderWidth: isSelected ? 3 : 2, // 選択時は太い枠
+                          opacity: editMode === 'move' && isSelected ? 0.8 : 1, // 移動中は少し透明に
                         }
                       ]}
+                      onPress={() => {
+                        // タップで選択状態を切り替え
+                        setSelectedBboxId(bbox.id);
+                        setEditMode(null);
+                      }}
+                      onLongPress={() => {
+                        // 長押しで削除確認ダイアログを表示
+                        showDeleteAlert(bbox.id);
+                      }}
+                      delayLongPress={800} // 長押し判定を800msに設定
+                      activeOpacity={0.7}
                     />
                     
                     {/* 選択時のリサイズハンドル */}
@@ -716,23 +725,23 @@ export default function CameraScreen() {
                       <>
                         {/* 四隅のリサイズハンドル */}
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x - 6,
-                          top: imageLayout.y + bbox.y - 6,
+                          left: imageLayout.x + bbox.x - 7,
+                          top: imageLayout.y + bbox.y - 7,
                           backgroundColor: bboxColor,
                         }]} />
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x + bbox.width - 6,
-                          top: imageLayout.y + bbox.y - 6,
+                          left: imageLayout.x + bbox.x + bbox.width - 7,
+                          top: imageLayout.y + bbox.y - 7,
                           backgroundColor: bboxColor,
                         }]} />
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x - 6,
-                          top: imageLayout.y + bbox.y + bbox.height - 6,
+                          left: imageLayout.x + bbox.x - 7,
+                          top: imageLayout.y + bbox.y + bbox.height - 7,
                           backgroundColor: bboxColor,
                         }]} />
                         <View style={[styles.resizeHandle, {
-                          left: imageLayout.x + bbox.x + bbox.width - 6,
-                          top: imageLayout.y + bbox.y + bbox.height - 6,
+                          left: imageLayout.x + bbox.x + bbox.width - 7,
+                          top: imageLayout.y + bbox.y + bbox.height - 7,
                           backgroundColor: bboxColor,
                         }]} />
                       </>
@@ -797,12 +806,28 @@ export default function CameraScreen() {
             <Text style={styles.annotationText}>
               アノテーション: {bboxes.length}個
             </Text>
-            <Text style={styles.annotationHelp}>
-              タップで選択、長押しで移動
-            </Text>
-            <Text style={styles.annotationHelp}>
-              さらに長押しで削除
-            </Text>
+            {editMode === 'move' ? (
+              <>
+                <Text style={[styles.annotationHelp, { color: '#FFD700' }]}>
+                  移動モード: ドラッグして移動
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  タップで移動終了
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.annotationHelp}>
+                  タップで選択、ドラッグで移動
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  長押しで削除
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  選択中は四角の丸が表示
+                </Text>
+              </>
+            )}
           </View>
           
           {/* 現在選択中のクラス表示（画面下部中央） */}
@@ -1087,9 +1112,9 @@ const styles = StyleSheet.create({
   },
   resizeHandle: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2,
     borderColor: 'white',
     backgroundColor: '#007AFF',
