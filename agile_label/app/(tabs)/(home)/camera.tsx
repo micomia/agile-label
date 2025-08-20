@@ -419,16 +419,7 @@ export default function CameraScreen() {
       // 軽いバイブレーション（iOS）があれば追加可能
     }, 500);
     
-    // 削除用の長押し（1500ms）
-    const deleteTimer = setTimeout(() => {
-      clearTimeout(moveTimer);
-      setEditMode(null);
-      setIsLongPressing(false);
-      console.log('長押し: 削除確認表示');
-      showDeleteAlert(bboxId);
-    }, 1500);
-    
-    setLongPressTimer(deleteTimer);
+    setLongPressTimer(moveTimer);
   }
 
   // 長押し判定終了
@@ -840,9 +831,6 @@ export default function CameraScreen() {
               <>
                 <Text style={styles.annotationHelp}>
                   タップで選択、長押しで移動
-                </Text>
-                <Text style={styles.annotationHelp}>
-                  さらに長押しで削除
                 </Text>
               </>
             )}
