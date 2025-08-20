@@ -10,7 +10,7 @@ import React from 'react';
 
 export default function DatasetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { datasets, loadDatasetImages } = useDatasets();
+  const { datasets, loadDatasetImages, deleteBboxFromImage } = useDatasets();
   
   // IDに基づいてデータセットを取得
   const dataset = datasets.find(d => d.id === id);
@@ -26,6 +26,17 @@ export default function DatasetDetailScreen() {
 
   const handleCameraPress = () => {
     router.push(`/(tabs)/(home)/camera?datasetId=${id}` as any);
+  };
+
+  const handleDeleteBbox = async (imageId: string, bboxId: string) => {
+    if (!id) return;
+    
+    try {
+      await deleteBboxFromImage(id, imageId, bboxId);
+      Alert.alert('削除完了', 'バウンディングボックスが削除されました');
+    } catch (error) {
+      Alert.alert('エラー', 'バウンディングボックスの削除に失敗しました');
+    }
   };
 
   const handleSaveDataset = () => {
@@ -153,7 +164,10 @@ export default function DatasetDetailScreen() {
       </View>
 
       {/* 画像ギャラリー */}
-      <ImageGallery images={dataset.images} />
+      <ImageGallery 
+        images={dataset.images} 
+        onDeleteBbox={handleDeleteBbox}
+      />
       
       {/* カメラボタン */}
       <FloatingActionButton 

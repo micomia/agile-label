@@ -17,20 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
-import { useDatasets } from '../../../contexts/DatasetContext';
+import { useDatasets, BBox } from '../../../contexts/DatasetContext';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 
 const { width, height } = Dimensions.get('window');
-
-// BBoxの型定義
-interface BBox {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label?: string;
-}
 
 // 履歴アクションの型定義
 interface HistoryAction {
@@ -285,7 +275,7 @@ export default function CameraScreen() {
       // DatasetContextを更新
       if (datasetId) {
         console.log('DatasetContextに画像を追加:', datasetId, destinationUri);
-        await addImageToDataset(datasetId, destinationUri);
+        await addImageToDataset(datasetId, destinationUri, bboxes);
       }
 
       Alert.alert(
@@ -722,6 +712,11 @@ export default function CameraScreen() {
                         setSelectedBboxId(bbox.id);
                         setEditMode(null);
                       }}
+                      onLongPress={() => {
+                        // 長押しで削除確認ダイアログを表示
+                        showDeleteAlert(bbox.id);
+                      }}
+                      delayLongPress={800} // 長押し判定を800msに設定
                       activeOpacity={0.7}
                     />
                     
@@ -824,6 +819,9 @@ export default function CameraScreen() {
               <>
                 <Text style={styles.annotationHelp}>
                   タップで選択、ドラッグで移動
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  長押しで削除
                 </Text>
                 <Text style={styles.annotationHelp}>
                   選択中は四角の丸が表示

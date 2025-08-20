@@ -1,12 +1,23 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import * as FileSystem from 'expo-file-system';
 
+// BBoxの型定義
+export interface BBox {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label?: string;
+}
+
 // 画像データの型定義
 export interface ImageData {
   id: string;
   uri: string;
   label?: string;
   createdAt: Date;
+  bboxes?: BBox[]; // バウンディングボックス情報を追加
 }
 
 // データセットの型定義
@@ -25,8 +36,9 @@ interface DatasetContextType {
   datasets: Dataset[];
   addDataset: (name: string, description: string, classNames?: string) => Promise<void>;
   deleteDataset: (id: string) => Promise<void>;
-  addImageToDataset: (datasetId: string, imageUri: string) => Promise<void>;
+  addImageToDataset: (datasetId: string, imageUri: string, bboxes?: BBox[]) => Promise<void>;
   loadDatasetImages: (datasetId: string) => Promise<void>;
+  deleteBboxFromImage: (datasetId: string, imageId: string, bboxId: string) => Promise<void>;
 }
 
 // コンテキストの作成
@@ -159,9 +171,11 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addImageToDataset = async (datasetId: string, imageUri: string) => {
+  const addImageToDataset = async (datasetId: string, imageUri: string, bboxes?: BBox[]) => {
     // アノテーションファイルからラベル情報を読み取り
     let imageLabel: string | undefined;
+    let annotationBboxes: BBox[] = [];
+    
     try {
       // 画像ファイル名からアノテーションファイル名を推測
       const imageName = imageUri.split('/').pop();
@@ -174,8 +188,9 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
           const annotationContent = await FileSystem.readAsStringAsync(annotationPath);
           const annotationData = JSON.parse(annotationContent);
           
-          // 最初のBBoxのラベルを使用（複数ある場合は最初の一つ）
+          // アノテーションファイルからBBox情報を読み取り
           if (annotationData.bboxes && annotationData.bboxes.length > 0) {
+            annotationBboxes = annotationData.bboxes;
             imageLabel = annotationData.bboxes[0].label;
           }
         }
@@ -184,11 +199,15 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       console.log('アノテーション読み取りエラー (無視):', error);
     }
 
+    // 渡されたbboxesがある場合はそれを使用、そうでなければアノテーションファイルから読み取ったものを使用
+    const finalBboxes = bboxes && bboxes.length > 0 ? bboxes : (annotationBboxes.length > 0 ? annotationBboxes : undefined);
+    
     const newImage: ImageData = {
       id: Date.now().toString(),
       uri: imageUri,
       label: imageLabel,
       createdAt: new Date(),
+      bboxes: finalBboxes,
     };
 
     console.log('addImageToDataset呼び出し:', { datasetId, imageUri, detectedLabel: imageLabel });
@@ -293,8 +312,74 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteBboxFromImage = async (datasetId: string, imageId: string, bboxId: string) => {
+    try {
+      setDatasets(prev => prev.map(dataset => {
+        if (dataset.id === datasetId) {
+          const updatedImages = dataset.images.map(image => {
+            if (image.id === imageId && image.bboxes) {
+              const updatedBboxes = image.bboxes.filter(bbox => bbox.id !== bboxId);
+              return {
+                ...image,
+                bboxes: updatedBboxes.length > 0 ? updatedBboxes : undefined
+              };
+            }
+            return image;
+          });
+
+          // アノテーションファイルも更新
+          const targetImage = updatedImages.find(img => img.id === imageId);
+          if (targetImage) {
+            updateAnnotationFile(targetImage, updatedImages.find(img => img.id === imageId)?.bboxes || []);
+          }
+
+          return {
+            ...dataset,
+            images: updatedImages
+          };
+        }
+        return dataset;
+      }));
+    } catch (error) {
+      console.error('BBox削除エラー:', error);
+    }
+  };
+
+  // アノテーションファイルを更新する関数
+  const updateAnnotationFile = async (image: ImageData, bboxes: BBox[]) => {
+    try {
+      const imageName = image.uri.split('/').pop();
+      if (imageName) {
+        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.json');
+        const annotationPath = image.uri.replace(imageName, annotationName);
+        
+        const annotationData = {
+          image: imageName,
+          timestamp: new Date().toISOString(),
+          bboxes: bboxes
+        };
+
+        await FileSystem.writeAsStringAsync(
+          annotationPath,
+          JSON.stringify(annotationData, null, 2)
+        );
+        
+        console.log('アノテーションファイルを更新:', annotationPath);
+      }
+    } catch (error) {
+      console.error('アノテーションファイル更新エラー:', error);
+    }
+  };
+
   return (
-    <DatasetContext.Provider value={{ datasets, addDataset, deleteDataset, addImageToDataset, loadDatasetImages }}>
+    <DatasetContext.Provider value={{ 
+      datasets, 
+      addDataset, 
+      deleteDataset, 
+      addImageToDataset, 
+      loadDatasetImages,
+      deleteBboxFromImage 
+    }}>
       {children}
     </DatasetContext.Provider>
   );
