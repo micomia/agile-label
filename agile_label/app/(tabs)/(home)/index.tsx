@@ -50,7 +50,7 @@ export default function Index() {
     }
 
     // 直接ファイルとして保存（iOSシェア画面を表示）
-    await createAndShareDatasetZip(dataset.images, dataset.name);
+    await createAndShareDatasetZip(dataset.images, dataset.name, dataset.id);
   };
 
   const handleCardPress = (dataset: Dataset) => {

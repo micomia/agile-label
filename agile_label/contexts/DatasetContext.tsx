@@ -23,9 +23,9 @@ export interface Dataset {
 // コンテキストの型定義
 interface DatasetContextType {
   datasets: Dataset[];
-  addDataset: (name: string, description: string) => Promise<void>;
+  addDataset: (name: string, description: string, classNames?: string) => Promise<void>;
   deleteDataset: (id: string) => Promise<void>;
-  addImageToDataset: (datasetId: string, imageUri: string) => void;
+  addImageToDataset: (datasetId: string, imageUri: string) => Promise<void>;
   loadDatasetImages: (datasetId: string) => Promise<void>;
 }
 
@@ -45,8 +45,21 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       const labelsDir = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/`;
       const classesFilePath = `${labelsDir}classes.txt`;
       
-      // ユニークなラベルを取得してソート
-      const uniqueLabels = Array.from(new Set(allLabels.filter(label => label))).sort();
+      // 既存のclasses.txtから既存のクラス名を読み取り
+      let existingClasses: string[] = [];
+      try {
+        const existingContent = await FileSystem.readAsStringAsync(classesFilePath);
+        existingClasses = existingContent
+          .split('\n')
+          .filter(line => line.trim() && !line.startsWith('#'))
+          .map(line => line.trim());
+      } catch (readError) {
+        console.log('既存のclasses.txt読み取りエラー (新規作成):', readError);
+      }
+      
+      // 既存のクラス名と新しいラベルをマージ
+      const allClasses = [...existingClasses, ...allLabels];
+      const uniqueLabels = Array.from(new Set(allClasses.filter(label => label))).sort();
       
       // classes.txtの内容を作成
       const content = [
@@ -57,13 +70,13 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       ].join('\n');
       
       await FileSystem.writeAsStringAsync(classesFilePath, content);
-      console.log(`classes.txtを更新しました: ${uniqueLabels.length}個のクラス`);
+      console.log(`classes.txtを更新しました: ${uniqueLabels.length}個のクラス`, uniqueLabels);
     } catch (error) {
       console.error('classes.txtの更新エラー:', error);
     }
   };
 
-  const addDataset = async (name: string, description: string) => {
+  const addDataset = async (name: string, description: string, classNames?: string) => {
     const newDataset: Dataset = {
       id: Date.now().toString(), // 簡単なID生成
       name,
@@ -85,15 +98,35 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       await FileSystem.makeDirectoryAsync(imgsDir, { intermediates: true });
       await FileSystem.makeDirectoryAsync(labelsDir, { intermediates: true });
       
-      // classes.txtファイルを作成（初期状態では空）
+      // クラス名を処理してclasses.txtファイルを作成
       const classesFilePath = `${labelsDir}classes.txt`;
-      await FileSystem.writeAsStringAsync(classesFilePath, '# クラス一覧\n# 画像にラベルを付けると、ここに自動的にクラス名が追加されます\n');
+      let classesContent = '# クラス一覧\n# 画像にラベルを付けると、ここに自動的にクラス名が追加されます\n\n';
+      
+      if (classNames && classNames.trim()) {
+        // クラス名を改行とカンマで分割し、空の値を除去してトリム
+        const classList = classNames
+          .split(/[\n,]/)
+          .map(cls => cls.trim())
+          .filter(cls => cls.length > 0);
+        
+        if (classList.length > 0) {
+          // 重複を除去してソート
+          const uniqueClasses = Array.from(new Set(classList)).sort();
+          classesContent += uniqueClasses.join('\n');
+          
+          // labelCountを更新
+          newDataset.labelCount = uniqueClasses.length;
+        }
+      }
+      
+      await FileSystem.writeAsStringAsync(classesFilePath, classesContent);
       
       console.log(`データセット ${newDataset.id} のフォルダ構造を作成しました:`, {
         datasetDir,
         imgsDir,
         labelsDir,
-        classesFile: classesFilePath
+        classesFile: classesFilePath,
+        classCount: newDataset.labelCount
       });
     } catch (error) {
       console.error('データセットフォルダの作成エラー:', error);
@@ -126,14 +159,39 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addImageToDataset = (datasetId: string, imageUri: string) => {
+  const addImageToDataset = async (datasetId: string, imageUri: string) => {
+    // アノテーションファイルからラベル情報を読み取り
+    let imageLabel: string | undefined;
+    try {
+      // 画像ファイル名からアノテーションファイル名を推測
+      const imageName = imageUri.split('/').pop();
+      if (imageName) {
+        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.json');
+        const annotationPath = imageUri.replace(imageName, annotationName);
+        
+        const annotationInfo = await FileSystem.getInfoAsync(annotationPath);
+        if (annotationInfo.exists) {
+          const annotationContent = await FileSystem.readAsStringAsync(annotationPath);
+          const annotationData = JSON.parse(annotationContent);
+          
+          // 最初のBBoxのラベルを使用（複数ある場合は最初の一つ）
+          if (annotationData.bboxes && annotationData.bboxes.length > 0) {
+            imageLabel = annotationData.bboxes[0].label;
+          }
+        }
+      }
+    } catch (error) {
+      console.log('アノテーション読み取りエラー (無視):', error);
+    }
+
     const newImage: ImageData = {
       id: Date.now().toString(),
       uri: imageUri,
+      label: imageLabel,
       createdAt: new Date(),
     };
 
-    console.log('addImageToDataset呼び出し:', { datasetId, imageUri });
+    console.log('addImageToDataset呼び出し:', { datasetId, imageUri, detectedLabel: imageLabel });
 
     setDatasets(prev => prev.map(dataset => {
       if (dataset.id === datasetId) {
@@ -144,7 +202,8 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
           datasetId,
           previousImageCount: dataset.images.length,
           newImageCount: updatedImages.length,
-          labelCount: uniqueLabels.size
+          labelCount: uniqueLabels.size,
+          detectedLabels: Array.from(uniqueLabels)
         });
 
         // classes.txtファイルを更新

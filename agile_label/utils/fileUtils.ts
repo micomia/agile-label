@@ -98,7 +98,7 @@ export async function saveMultipleImagesToFiles(images: ImageData[], datasetName
 }
 
 // ZIPファイルを作成してシェアする関数（iOSでファイルアプリに保存）
-export async function createAndShareDatasetZip(images: ImageData[], datasetName: string): Promise<boolean> {
+export async function createAndShareDatasetZip(images: ImageData[], datasetName: string, datasetId?: string): Promise<boolean> {
   try {
     const tempDir = FileSystem.documentDirectory + `${datasetName}_${Date.now()}/`;
     const imgsDir = tempDir + 'imgs/';
@@ -129,9 +129,38 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       }
     }
 
-    // classes.txtファイルを作成
+    // classes.txtファイルを作成（共有用の一時フォルダ内）
     try {
-      const uniqueLabels = Array.from(new Set(images.filter(img => img.label).map(img => img.label!))).sort();
+      let allClasses: string[] = [];
+      
+      // 元のデータセットのclasses.txtから既存のクラス名を読み取り（datasetIdが提供されている場合）
+      if (datasetId) {
+        try {
+          const originalClassesPath = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/classes.txt`;
+          const originalClassesInfo = await FileSystem.getInfoAsync(originalClassesPath);
+          
+          if (originalClassesInfo.exists) {
+            const originalContent = await FileSystem.readAsStringAsync(originalClassesPath);
+            const existingClasses = originalContent
+              .split('\n')
+              .filter(line => line.trim() && !line.startsWith('#'))
+              .map(line => line.trim());
+            
+            allClasses.push(...existingClasses);
+            console.log(`[共有用] 元のclasses.txtから読み込み:`, existingClasses);
+          }
+        } catch (readError) {
+          console.log('元のclasses.txt読み取りエラー (続行):', readError);
+        }
+      }
+      
+      // 画像のラベルからもクラス名を取得
+      const imageLabels = Array.from(new Set(images.filter(img => img.label).map(img => img.label!)));
+      allClasses.push(...imageLabels);
+      
+      // 重複を除去してソート
+      const uniqueLabels = Array.from(new Set(allClasses.filter(label => label))).sort();
+      
       const classesContent = [
         '# クラス一覧',
         '# このデータセットに含まれるクラス名のリスト',
@@ -141,9 +170,9 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       
       const classesFilePath = labelsDir + 'classes.txt';
       await FileSystem.writeAsStringAsync(classesFilePath, classesContent);
-      console.log(`classes.txtを作成しました: ${uniqueLabels.length}個のクラス`);
+      console.log(`[共有用] classes.txtを作成しました: ${uniqueLabels.length}個のクラス (一時フォルダ: ${classesFilePath})`, uniqueLabels);
     } catch (error) {
-      console.error('classes.txtの作成エラー:', error);
+      console.error('共有用classes.txtの作成エラー:', error);
     }
     
     // シェア機能を使用（iOSではファイルアプリに保存可能）

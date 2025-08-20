@@ -21,8 +21,8 @@ export default function CreateScreen() {
       return;
     }
 
-    // データセットを作成
-    addDataset(datasetName.trim(), datasetDescription.trim());
+    // データセットを作成（クラス名も含めて）
+    addDataset(datasetName.trim(), datasetDescription.trim(), classNames.trim());
     
     Alert.alert(
       '作成完了', 

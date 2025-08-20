@@ -277,7 +277,7 @@ export default function CameraScreen() {
       // DatasetContextを更新
       if (datasetId) {
         console.log('DatasetContextに画像を追加:', datasetId, destinationUri);
-        addImageToDataset(datasetId, destinationUri);
+        await addImageToDataset(datasetId, destinationUri);
       }
 
       Alert.alert(
