@@ -378,6 +378,7 @@ export default function CameraScreen() {
     
     // 新しいBBoxの描画開始
     setSelectedBboxId(null);
+    setEditMode(null); // 移動モードも終了
     
     // 画像領域内かチェック
     if (
@@ -405,16 +406,25 @@ export default function CameraScreen() {
 
   // 長押し判定開始
   function startLongPress(bboxId: string) {
+    // 既存のタイマーをクリア
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+    }
+    
     // 移動用の長押し（500ms）
     const moveTimer = setTimeout(() => {
       setEditMode('move');
       setIsLongPressing(true);
+      console.log('長押し: 移動モード開始');
+      // 軽いバイブレーション（iOS）があれば追加可能
     }, 500);
     
     // 削除用の長押し（1500ms）
     const deleteTimer = setTimeout(() => {
       clearTimeout(moveTimer);
+      setEditMode(null);
       setIsLongPressing(false);
+      console.log('長押し: 削除確認表示');
       showDeleteAlert(bboxId);
     }, 1500);
     
@@ -463,12 +473,13 @@ export default function CameraScreen() {
       
       if (editMode === 'move') {
         // BBox移動 - 画像境界内に制限
-        const deltaX = relativeX - (selectedBbox.x + selectedBbox.width / 2);
-        const deltaY = relativeY - (selectedBbox.y + selectedBbox.height / 2);
+        // タッチポイントを基準にBBoxの中心を移動
+        const newCenterX = relativeX;
+        const newCenterY = relativeY;
         
-        // 新しい位置を計算し、画像境界内に制限
-        const newX = Math.max(0, Math.min(selectedBbox.x + deltaX, imageLayout.width - selectedBbox.width));
-        const newY = Math.max(0, Math.min(selectedBbox.y + deltaY, imageLayout.height - selectedBbox.height));
+        // BBoxの新しい左上位置を計算
+        const newX = Math.max(0, Math.min(newCenterX - selectedBbox.width / 2, imageLayout.width - selectedBbox.width));
+        const newY = Math.max(0, Math.min(newCenterY - selectedBbox.height / 2, imageLayout.height - selectedBbox.height));
         
         setBboxes(prev => prev.map(bbox => 
           bbox.id === selectedBboxId 
@@ -696,7 +707,7 @@ export default function CameraScreen() {
                 const isSelected = selectedBboxId === bbox.id;
                 return (
                   <View key={bbox.id} style={{ position: 'absolute' }}>
-                    <View
+                    <TouchableOpacity
                       style={[
                         styles.bbox,
                         {
@@ -707,8 +718,27 @@ export default function CameraScreen() {
                           borderColor: bboxColor,
                           backgroundColor: `${bboxColor}30`, // 透明度を追加
                           borderWidth: isSelected ? 3 : 2, // 選択時は太い枠
+                          opacity: editMode === 'move' && isSelected ? 0.8 : 1, // 移動中は少し透明に
                         }
                       ]}
+                      onPress={() => {
+                        // タップで選択/選択解除
+                        setSelectedBboxId(isSelected ? null : bbox.id);
+                        setEditMode(null);
+                        cancelLongPress();
+                      }}
+                      onPressIn={() => {
+                        // タッチ開始時に長押し判定を開始
+                        setSelectedBboxId(bbox.id);
+                        startLongPress(bbox.id);
+                      }}
+                      onPressOut={() => {
+                        // タッチ終了時に長押し判定を終了
+                        if (editMode !== 'move') {
+                          cancelLongPress();
+                        }
+                      }}
+                      activeOpacity={0.7}
                     />
                     
                     {/* 選択時のリサイズハンドル */}
@@ -797,12 +827,25 @@ export default function CameraScreen() {
             <Text style={styles.annotationText}>
               アノテーション: {bboxes.length}個
             </Text>
-            <Text style={styles.annotationHelp}>
-              タップで選択、長押しで移動
-            </Text>
-            <Text style={styles.annotationHelp}>
-              さらに長押しで削除
-            </Text>
+            {editMode === 'move' ? (
+              <>
+                <Text style={[styles.annotationHelp, { color: '#FFD700' }]}>
+                  移動モード: ドラッグして移動
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  タップで移動終了
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.annotationHelp}>
+                  タップで選択、長押しで移動
+                </Text>
+                <Text style={styles.annotationHelp}>
+                  さらに長押しで削除
+                </Text>
+              </>
+            )}
           </View>
           
           {/* 現在選択中のクラス表示（画面下部中央） */}
