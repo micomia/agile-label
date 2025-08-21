@@ -147,17 +147,27 @@ export default function CameraScreen() {
         await FileSystem.makeDirectoryAsync(datasetDir, { intermediates: true });
       }
       
-      // classes.txtファイルを更新
+      // classes.txtファイルを更新（YOLO形式用）
       const classesFile = `${datasetDir}classes.txt`;
-      const content = [
-        '# クラス一覧',
-        '# 画像にラベルを付けると、ここに自動的にクラス名が追加されます',
-        '',
-        ...classes.sort()
-      ].join('\n');
+      const content = classes.join('\n'); // シンプルにクラス名のみを行ごとに記載
       
       await FileSystem.writeAsStringAsync(classesFile, content);
-      console.log(`[カメラ] classes.txtを更新しました: ${classes.length}個のクラス`, classes);
+      console.log(`[カメラ] classes.txt(YOLO形式)を更新しました: ${classes.length}個のクラス`, classes);
+      
+      // 詳細情報付きのclasses_info.txtも作成
+      const classesInfoFile = `${datasetDir}classes_info.txt`;
+      const infoContent = [
+        '# クラス一覧（YOLO形式）',
+        '# 各行のインデックスがクラス番号に対応します',
+        '# 0: ' + (classes[0] || 'unknown'),
+        ...classes.slice(1).map((className, index) => `# ${index + 1}: ${className}`),
+        '',
+        '# 実際のクラス名（classes.txtと同じ内容）',
+        ...classes
+      ].join('\n');
+      
+      await FileSystem.writeAsStringAsync(classesInfoFile, infoContent);
+      console.log(`[カメラ] classes_info.txtを更新しました`);
     } catch (error) {
       console.error('クラス情報の保存エラー:', error);
     }
@@ -235,11 +245,20 @@ export default function CameraScreen() {
 
       // データセット固有のサブフォルダを作成（datasetIdが提供されている場合）
       let targetDir = datasetDir;
+      let labelsDir = datasetDir;
       if (datasetId) {
         targetDir = `${datasetDir}${datasetId}/`;
+        labelsDir = `${datasetDir}${datasetId}/labels/`;
+        
+        // 画像用とラベル用のディレクトリを作成
         const datasetDirInfo = await FileSystem.getInfoAsync(targetDir);
         if (!datasetDirInfo.exists) {
           await FileSystem.makeDirectoryAsync(targetDir, { intermediates: true });
+        }
+        
+        const labelsDirInfo = await FileSystem.getInfoAsync(labelsDir);
+        if (!labelsDirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(labelsDir, { intermediates: true });
         }
       }
 
@@ -270,6 +289,74 @@ export default function CameraScreen() {
         );
         
         console.log('アノテーション情報を保存:', annotationData);
+      }
+
+      // YOLO形式のtxtファイルをlabelsディレクトリに保存（BBoxがない場合でも空ファイルを作成）
+      const txtFileName = `photo_${timestamp}.txt`;
+      const txtUri = `${labelsDir}${txtFileName}`;
+      
+      try {
+        if (bboxes.length > 0) {
+          // 実際の画像サイズを取得
+          const actualImageSize = await getImageSize(destinationUri);
+          console.log('実際の画像サイズ:', actualImageSize);
+          
+          // 表示サイズと実際サイズの比率を計算
+          const scaleX = actualImageSize.width / (imageLayout?.width || 1);
+          const scaleY = actualImageSize.height / (imageLayout?.height || 1);
+          
+          console.log('表示サイズ:', imageLayout);
+          console.log('スケール比率:', { scaleX, scaleY });
+          
+          // BBoxを実際の画像サイズに変換してからYOLO形式に変換
+          const yoloLines = bboxes.map(bbox => {
+            // 表示サイズから実際のサイズに変換
+            const actualBbox = {
+              ...bbox,
+              x: bbox.x * scaleX,
+              y: bbox.y * scaleY,
+              width: bbox.width * scaleX,
+              height: bbox.height * scaleY,
+            };
+            
+            console.log(`変換前BBox:`, bbox);
+            console.log(`変換後BBox:`, actualBbox);
+            
+            return convertToYOLOFormat(actualBbox, actualImageSize.width, actualImageSize.height);
+          });
+          
+          await FileSystem.writeAsStringAsync(
+            txtUri,
+            yoloLines.join('\n')
+          );
+          
+          console.log('YOLO形式ファイルを保存:', txtUri);
+          console.log('YOLO形式内容:', yoloLines);
+        } else {
+          // BBoxがない場合は空のtxtファイルを作成
+          await FileSystem.writeAsStringAsync(txtUri, '');
+          console.log('空のYOLO形式ファイルを保存:', txtUri);
+        }
+      } catch (error) {
+        console.error('YOLO形式ファイルの保存に失敗:', error);
+        // 失敗した場合はimageLayoutを使用してフォールバック
+        if (imageLayout && bboxes.length > 0) {
+          const yoloLines = bboxes.map(bbox => 
+            convertToYOLOFormat(bbox, imageLayout.width, imageLayout.height)
+          );
+          
+          await FileSystem.writeAsStringAsync(
+            txtUri,
+            yoloLines.join('\n')
+          );
+          
+          console.log('YOLO形式ファイルを保存(フォールバック):', txtUri);
+          console.log('YOLO形式内容(フォールバック):', yoloLines);
+        } else {
+          // フォールバックでも失敗した場合は空ファイル作成
+          await FileSystem.writeAsStringAsync(txtUri, '');
+          console.log('空のYOLO形式ファイルを保存(フォールバック):', txtUri);
+        }
       }
 
       // DatasetContextを更新
@@ -652,6 +739,47 @@ export default function CameraScreen() {
       // クラス情報を保存
       setTimeout(saveDatasetClasses, 100);
     }
+  }
+
+  // クラス名からクラス番号を取得する関数
+  function getClassIndex(className: string): number {
+    const index = classes.indexOf(className);
+    return index >= 0 ? index : 0; // 見つからない場合は0を返す
+  }
+
+  // BBoxをYOLO形式に変換する関数
+  function convertToYOLOFormat(bbox: BBox, imageWidth: number, imageHeight: number): string {
+    const classIndex = getClassIndex(bbox.label || 'object');
+    
+    // 中心座標を計算（相対座標）
+    const centerX = (bbox.x + bbox.width / 2) / imageWidth;
+    const centerY = (bbox.y + bbox.height / 2) / imageHeight;
+    
+    // 幅と高さを相対座標に変換
+    const relativeWidth = bbox.width / imageWidth;
+    const relativeHeight = bbox.height / imageHeight;
+    
+    // デバッグ用ログ
+    console.log(`[YOLO変換] クラス: ${bbox.label} (${classIndex}), 元座標: (${bbox.x}, ${bbox.y}, ${bbox.width}, ${bbox.height}), 画像サイズ: (${imageWidth}, ${imageHeight})`);
+    console.log(`[YOLO変換] 相対座標: center(${centerX.toFixed(6)}, ${centerY.toFixed(6)}), size(${relativeWidth.toFixed(6)}, ${relativeHeight.toFixed(6)})`);
+    
+    // YOLO形式: class_id center_x center_y width height
+    return `${classIndex} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${relativeWidth.toFixed(6)} ${relativeHeight.toFixed(6)}`;
+  }
+
+  // 画像サイズを取得する関数
+  function getImageSize(uri: string): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      Image.getSize(
+        uri,
+        (width, height) => {
+          resolve({ width, height });
+        },
+        (error) => {
+          reject(error);
+        }
+      );
+    });
   }
 
   // クラス選択時の処理
