@@ -174,11 +174,15 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
             
             console.log(`[エクスポート] クラス変換: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, classList);
             
-            // 座標をそのまま使用（正規化せずピクセル単位で保存）
-            const centerX = bbox.x + bbox.width / 2;
-            const centerY = bbox.y + bbox.height / 2;
-            const width = bbox.width;
-            const height = bbox.height;
+            // 画像の実際のサイズを取得（仮の値を使用）
+            const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+            const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+            
+            // 座標を正規化 (0-1の範囲)
+            const centerX = (bbox.x + bbox.width / 2) / imageWidth;
+            const centerY = (bbox.y + bbox.height / 2) / imageHeight;
+            const width = bbox.width / imageWidth;
+            const height = bbox.height / imageHeight;
             
             return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
           }).join('\n');

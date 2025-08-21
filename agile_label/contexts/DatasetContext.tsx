@@ -209,13 +209,17 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
               // クラス番号からクラス名を取得
               const className = classList[classNumber] || 'object';
               
-              // 中心座標から左上座標に変換（ピクセル単位で保存）
+              // 画像の実際のサイズを取得（仮の値を使用）
+              const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+              const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+              
+              // 正規化された座標からピクセル座標に変換し、中心座標から左上座標に変換
               const bbox: BBox = {
                 id: `bbox_${Date.now()}_${index}`,
-                x: centerX - width / 2,
-                y: centerY - height / 2,
-                width: width,
-                height: height,
+                x: (centerX - width / 2) * imageWidth,
+                y: (centerY - height / 2) * imageHeight,
+                width: width * imageWidth,
+                height: height * imageHeight,
                 label: className,
               };
               
@@ -401,6 +405,11 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
           console.log('classes.txt読み取りエラー:', classError);
         }
         
+        // 画像の実際のサイズを取得（アノテーション座標が保存されているのは表示サイズ基準のため）
+        // ここでは仮の値を使用。実際には画像ファイルから取得する必要があります
+        const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+        const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+        
         // YOLO形式のアノテーション文字列を作成
         const yoloAnnotations = bboxes.map(bbox => {
           // クラス名をクラス番号に変換
@@ -409,11 +418,11 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
           
           console.log(`[DatasetContext] クラス変換: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, classList);
           
-          // 座標をそのまま使用（正規化せずピクセル単位で保存）
-          const centerX = bbox.x + bbox.width / 2;
-          const centerY = bbox.y + bbox.height / 2;
-          const width = bbox.width;
-          const height = bbox.height;
+          // 座標を正規化 (0-1の範囲)
+          const centerX = (bbox.x + bbox.width / 2) / imageWidth;
+          const centerY = (bbox.y + bbox.height / 2) / imageHeight;
+          const width = bbox.width / imageWidth;
+          const height = bbox.height / imageHeight;
           
           return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
         }).join('\n');

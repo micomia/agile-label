@@ -285,13 +285,13 @@ export default function CameraScreen() {
           
           console.log(`[アノテーション変換] クラス: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, currentClasses);
           
-          // 座標をそのまま使用（正規化せずピクセル単位で保存）
-          const centerX = bbox.x + bbox.width / 2;
-          const centerY = bbox.y + bbox.height / 2;
-          const width = bbox.width;
-          const height = bbox.height;
+          // バウンディングボックスの座標を正規化 (0-1の範囲)
+          const centerX = (bbox.x + bbox.width / 2) / (imageLayout?.width || 1);
+          const centerY = (bbox.y + bbox.height / 2) / (imageLayout?.height || 1);
+          const width = bbox.width / (imageLayout?.width || 1);
+          const height = bbox.height / (imageLayout?.height || 1);
           
-          // 形式: class_number center_x center_y width height（ピクセル単位）
+          // YOLO形式: class_number center_x center_y width height (0-1正規化)
           return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
         }).join('\n');
         
