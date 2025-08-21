@@ -523,9 +523,11 @@ export default function CameraScreen() {
     const relativeX = Math.max(0, Math.min(x - imageLayout.x, imageLayout.width));
     const relativeY = Math.max(0, Math.min(y - imageLayout.y, imageLayout.height));
     
+    // 幅と高さを計算（負の値も許可して自然な描画を実現）
     const width = relativeX - currentBbox.x;
     const height = relativeY - currentBbox.y;
     
+    // 更新されたBBoxを設定（負の値も含めて）
     setCurrentBbox({
       ...currentBbox,
       width,
@@ -781,20 +783,32 @@ export default function CameraScreen() {
               
               {/* 描画中のBBox */}
               {currentBbox && imageLayout && (
-                <View
-                  style={[
-                    styles.bbox,
-                    styles.currentBbox,
-                    {
-                      left: imageLayout.x + currentBbox.x,
-                      top: imageLayout.y + currentBbox.y,
-                      width: currentBbox.width,
-                      height: currentBbox.height,
-                      borderColor: getClassColor(selectedClass, classes),
-                      backgroundColor: `${getClassColor(selectedClass, classes)}30`,
-                    }
-                  ]}
-                />
+                (() => {
+                  // 負のwidth/heightに対応した正規化された座標を計算
+                  const normalizedX = currentBbox.width < 0 ? currentBbox.x + currentBbox.width : currentBbox.x;
+                  const normalizedY = currentBbox.height < 0 ? currentBbox.y + currentBbox.height : currentBbox.y;
+                  const normalizedWidth = Math.abs(currentBbox.width);
+                  const normalizedHeight = Math.abs(currentBbox.height);
+                  
+                  return (
+                    <View
+                      style={[
+                        styles.bbox,
+                        styles.currentBbox,
+                        {
+                          left: imageLayout.x + normalizedX,
+                          top: imageLayout.y + normalizedY,
+                          width: normalizedWidth,
+                          height: normalizedHeight,
+                          borderColor: getClassColor(selectedClass, classes),
+                          backgroundColor: `${getClassColor(selectedClass, classes)}30`,
+                          borderStyle: 'dashed', // 描画中は破線で表示
+                          opacity: 0.8,
+                        }
+                      ]}
+                    />
+                  );
+                })()
               )}
             </View>
           </PanGestureHandler>
@@ -1077,7 +1091,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 107, 107, 0.2)', // デフォルト色（動的に上書きされる）
   },
   currentBbox: {
-    // 動的に色が設定されるため、ここでは色を指定しない
+    // 描画中のBBoxの視覚的フィードバックを改善
+    borderStyle: 'dashed',
+    opacity: 0.8,
+    elevation: 2, // Android用の影
+    shadowColor: '#000', // iOS用の影
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   resizeHandle: {
     position: 'absolute',
