@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { useDatasets, BBox } from '../../../contexts/DatasetContext';
@@ -89,6 +89,7 @@ export default function CameraScreen() {
   const [selectedClass, setSelectedClass] = useState<string>('object');
   const [showClassModal, setShowClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState('');
+  const [isClassesLoaded, setIsClassesLoaded] = useState(false); // クラス読み込み完了フラグ
   
   // 履歴管理の状態
   const [history, setHistory] = useState<HistoryAction[]>([]);
@@ -106,16 +107,36 @@ export default function CameraScreen() {
     loadDatasetClasses();
   }, [datasetId]);
 
+  // 画面にフォーカスが当たった時にクラス情報を再読み込み
+  useFocusEffect(
+    React.useCallback(() => {
+      if (datasetId) {
+        loadDatasetClasses();
+      }
+    }, [datasetId])
+  );
+
   async function loadDatasetClasses() {
     if (!datasetId) return;
+    
+    console.log(`[カメラ] クラス情報読み込み開始 - データセットID: ${datasetId}`);
     
     try {
       const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/`;
       const classesFile = `${datasetDir}classes.txt`;
       
+      // ディレクトリが存在しない場合は作成
+      const dirInfo = await FileSystem.getInfoAsync(datasetDir);
+      if (!dirInfo.exists) {
+        console.log(`[カメラ] ディレクトリ作成: ${datasetDir}`);
+        await FileSystem.makeDirectoryAsync(datasetDir, { intermediates: true });
+      }
+      
       const fileInfo = await FileSystem.getInfoAsync(classesFile);
       if (fileInfo.exists) {
         const classesContent = await FileSystem.readAsStringAsync(classesFile);
+        console.log(`[カメラ] classes.txtの内容:`, classesContent);
+        
         const loadedClasses = classesContent
           .split('\n')
           .filter(line => line.trim() && !line.startsWith('#'))
@@ -125,14 +146,25 @@ export default function CameraScreen() {
           console.log(`[カメラ] classes.txtから読み込んだクラス:`, loadedClasses);
           setClasses(loadedClasses);
           setSelectedClass(loadedClasses[0]); // 最初のクラスを選択
+          setIsClassesLoaded(true);
+          console.log(`[カメラ] クラス読み込み完了 - 選択クラス: ${loadedClasses[0]}`);
         } else {
-          console.log('[カメラ] classes.txtにクラスが見つからないため、デフォルトクラスを使用');
+          console.log('[カメラ] classes.txtにクラスが見つからないため、デフォルトクラスを使用して保存');
+          // デフォルトクラスをファイルに保存
+          await saveDatasetClassesWithArray(classes);
+          setIsClassesLoaded(true);
         }
       } else {
-        console.log('[カメラ] classes.txtが存在しないため、デフォルトクラスを使用');
+        console.log('[カメラ] classes.txtが存在しないため、デフォルトクラスを作成');
+        // デフォルトクラスでファイルを作成
+        await saveDatasetClassesWithArray(classes);
+        setIsClassesLoaded(true);
       }
     } catch (error) {
       console.error('クラス情報の読み込みエラー:', error);
+      // エラーが発生した場合はデフォルトクラスでファイルを作成
+      await saveDatasetClassesWithArray(classes);
+      setIsClassesLoaded(true);
     }
   }
 
@@ -155,8 +187,49 @@ export default function CameraScreen() {
       
       await FileSystem.writeAsStringAsync(classesFile, content);
       console.log(`[カメラ] classes.txtを更新しました: ${classes.length}個のクラス`, classes);
+      
+      // DatasetContextのクラス数は他の関数で自動更新されます
     } catch (error) {
       console.error('クラス情報の保存エラー:', error);
+    }
+  }
+
+  // 特定のクラス配列で保存する関数
+  async function saveDatasetClassesWithArray(classArray: string[]) {
+    if (!datasetId) {
+      console.log(`[カメラ] 保存スキップ: datasetIdが未設定`);
+      return;
+    }
+    
+    console.log(`[カメラ] クラス保存開始 - データセットID: ${datasetId}, クラス:`, classArray);
+    
+    try {
+      const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/`;
+      const dirInfo = await FileSystem.getInfoAsync(datasetDir);
+      
+      if (!dirInfo.exists) {
+        console.log(`[カメラ] ディレクトリ作成: ${datasetDir}`);
+        await FileSystem.makeDirectoryAsync(datasetDir, { intermediates: true });
+      }
+      
+      // classes.txtファイルを更新
+      const classesFile = `${datasetDir}classes.txt`;
+      const content = classArray.sort().join('\n');
+      
+      console.log(`[カメラ] classes.txtに保存する内容:`, content);
+      
+      await FileSystem.writeAsStringAsync(classesFile, content);
+      console.log(`[カメラ] classes.txt保存完了: ${classArray.length}個のクラス`);
+      
+      // 保存後にファイルの内容を確認
+      const savedContent = await FileSystem.readAsStringAsync(classesFile);
+      console.log(`[カメラ] 保存確認 - ファイル内容:`, savedContent);
+      
+      // DatasetContextのクラス数を更新（直接setDatasetsを使用して無限ループを避ける）
+      console.log(`[カメラ] classes.txt保存完了、DatasetContextは自動的に同期されます`);
+    } catch (error) {
+      console.error('クラス情報の保存エラー:', error);
+      throw error; // エラーを再スローして呼び出し元で処理
     }
   }
 
@@ -661,24 +734,50 @@ export default function CameraScreen() {
   }
 
   // クラス追加
-  function addClass() {
+  async function addClass() {
     if (newClassName.trim() && !classes.includes(newClassName.trim())) {
-      setClasses(prev => [...prev, newClassName.trim()]);
+      const newClasses = [...classes, newClassName.trim()];
+      setClasses(newClasses);
       setNewClassName('');
-      // クラス情報を保存
-      setTimeout(saveDatasetClasses, 100);
+      
+      console.log(`[カメラ] クラス追加: "${newClassName.trim()}"`, newClasses);
+      
+      // 即座にクラス情報を保存
+      await saveDatasetClassesWithArray(newClasses);
     }
   }
 
   // クラス削除
-  function deleteClass(className: string) {
+  async function deleteClass(className: string) {
     if (classes.length > 1) { // 最低1つのクラスは残す
-      setClasses(prev => prev.filter(c => c !== className));
+      console.log(`[カメラ] クラス削除開始: "${className}", 現在のクラス:`, classes);
+      
+      const newClasses = classes.filter(c => c !== className);
+      console.log(`[カメラ] 削除後のクラス:`, newClasses);
+      
+      // 状態を更新
+      setClasses(newClasses);
+      
+      // 削除されたクラスが選択中だった場合、別のクラスを選択
+      let newSelectedClass = selectedClass;
       if (selectedClass === className) {
-        setSelectedClass(classes.filter(c => c !== className)[0]);
+        newSelectedClass = newClasses[0];
+        setSelectedClass(newSelectedClass);
+        console.log(`[カメラ] 選択クラス変更: "${className}" -> "${newSelectedClass}"`);
       }
-      // クラス情報を保存
-      setTimeout(saveDatasetClasses, 100);
+      
+      // 即座にクラス情報を保存
+      try {
+        await saveDatasetClassesWithArray(newClasses);
+        console.log(`[カメラ] クラス削除完了: "${className}"`);
+      } catch (error) {
+        console.error(`[カメラ] クラス削除保存エラー:`, error);
+        // エラーが発生した場合は状態を元に戻す
+        setClasses(classes);
+        setSelectedClass(selectedClass);
+      }
+    } else {
+      console.log(`[カメラ] クラス削除不可: 最低1つのクラスが必要`);
     }
   }
 
@@ -686,8 +785,7 @@ export default function CameraScreen() {
   function selectClass(className: string) {
     setSelectedClass(className);
     setShowClassModal(false);
-    // クラス情報を保存
-    setTimeout(saveDatasetClasses, 100);
+    console.log(`[カメラ] クラス選択: "${className}"`);
   }
 
   // プレビュー画面を表示

@@ -4,7 +4,7 @@
     "slug": "agile_label",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon_agilelabel.png",
     "scheme": "agilelabel",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
