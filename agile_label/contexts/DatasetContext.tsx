@@ -74,12 +74,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       const uniqueLabels = Array.from(new Set(allClasses.filter(label => label))).sort();
       
       // classes.txtの内容を作成
-      const content = [
-        '# クラス一覧',
-        '# 画像にラベルを付けると、ここに自動的にクラス名が追加されます',
-        '',
-        ...uniqueLabels
-      ].join('\n');
+      const content = uniqueLabels.join('\n');
       
       await FileSystem.writeAsStringAsync(classesFilePath, content);
       console.log(`classes.txtを更新しました: ${uniqueLabels.length}個のクラス`, uniqueLabels);
@@ -112,7 +107,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       
       // クラス名を処理してclasses.txtファイルを作成
       const classesFilePath = `${labelsDir}classes.txt`;
-      let classesContent = '# クラス一覧\n# 画像にラベルを付けると、ここに自動的にクラス名が追加されます\n\n';
+      let classesContent = '';
       
       if (classNames && classNames.trim()) {
         // クラス名を改行とカンマで分割し、空の値を除去してトリム
@@ -124,7 +119,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
         if (classList.length > 0) {
           // 重複を除去してソート
           const uniqueClasses = Array.from(new Set(classList)).sort();
-          classesContent += uniqueClasses.join('\n');
+          classesContent = uniqueClasses.join('\n');
           
           // labelCountを更新
           newDataset.labelCount = uniqueClasses.length;
@@ -180,18 +175,62 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       // 画像ファイル名からアノテーションファイル名を推測
       const imageName = imageUri.split('/').pop();
       if (imageName) {
-        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.json');
+        // YOLO形式のtxtファイルを探す
+        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.txt');
         const annotationPath = imageUri.replace(imageName, annotationName);
         
         const annotationInfo = await FileSystem.getInfoAsync(annotationPath);
         if (annotationInfo.exists) {
           const annotationContent = await FileSystem.readAsStringAsync(annotationPath);
-          const annotationData = JSON.parse(annotationContent);
           
-          // アノテーションファイルからBBox情報を読み取り
-          if (annotationData.bboxes && annotationData.bboxes.length > 0) {
-            annotationBboxes = annotationData.bboxes;
-            imageLabel = annotationData.bboxes[0].label;
+          // classes.txtからクラス名リストを取得
+          const datasetId = imageUri.split('/')[imageUri.split('/').length - 2]; // パスからdatasetIdを抽出
+          const classesPath = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/classes.txt`;
+          let classList: string[] = [];
+          
+          try {
+            const classesContent = await FileSystem.readAsStringAsync(classesPath);
+            classList = classesContent.split('\n').filter(line => line.trim()).map(line => line.trim());
+          } catch (classError) {
+            console.log('classes.txt読み取りエラー:', classError);
+          }
+          
+          // YOLO形式のアノテーション行を解析
+          const lines = annotationContent.split('\n').filter(line => line.trim());
+          annotationBboxes = lines.map((line, index) => {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 5) {
+              const classNumber = parseInt(parts[0], 10);
+              const centerX = parseFloat(parts[1]);
+              const centerY = parseFloat(parts[2]);
+              const width = parseFloat(parts[3]);
+              const height = parseFloat(parts[4]);
+              
+              // クラス番号からクラス名を取得
+              const className = classList[classNumber] || 'object';
+              
+              // 画像の実際のサイズを取得（仮の値を使用）
+              const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+              const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+              
+              // 正規化された座標からピクセル座標に変換し、中心座標から左上座標に変換
+              const bbox: BBox = {
+                id: `bbox_${Date.now()}_${index}`,
+                x: (centerX - width / 2) * imageWidth,
+                y: (centerY - height / 2) * imageHeight,
+                width: width * imageWidth,
+                height: height * imageHeight,
+                label: className,
+              };
+              
+              return bbox;
+            }
+            return null;
+          }).filter(bbox => bbox !== null) as BBox[];
+          
+          // 最初のBBoxのラベルを画像ラベルとして使用
+          if (annotationBboxes.length > 0) {
+            imageLabel = annotationBboxes[0].label;
           }
         }
       }
@@ -350,21 +389,47 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     try {
       const imageName = image.uri.split('/').pop();
       if (imageName) {
-        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.json');
+        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.txt');
         const annotationPath = image.uri.replace(imageName, annotationName);
         
-        const annotationData = {
-          image: imageName,
-          timestamp: new Date().toISOString(),
-          bboxes: bboxes
-        };
-
-        await FileSystem.writeAsStringAsync(
-          annotationPath,
-          JSON.stringify(annotationData, null, 2)
-        );
+        // datasetIdを取得
+        const datasetId = image.uri.split('/')[image.uri.split('/').length - 2];
+        const classesPath = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/classes.txt`;
         
-        console.log('アノテーションファイルを更新:', annotationPath);
+        // classes.txtからクラス名リストを取得
+        let classList: string[] = [];
+        try {
+          const classesContent = await FileSystem.readAsStringAsync(classesPath);
+          classList = classesContent.split('\n').filter(line => line.trim()).map(line => line.trim());
+        } catch (classError) {
+          console.log('classes.txt読み取りエラー:', classError);
+        }
+        
+        // 画像の実際のサイズを取得（アノテーション座標が保存されているのは表示サイズ基準のため）
+        // ここでは仮の値を使用。実際には画像ファイルから取得する必要があります
+        const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+        const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+        
+        // YOLO形式のアノテーション文字列を作成
+        const yoloAnnotations = bboxes.map(bbox => {
+          // クラス名をクラス番号に変換
+          const classIndex = classList.indexOf(bbox.label || 'object');
+          const classNumber = classIndex >= 0 ? classIndex : 0;
+          
+          console.log(`[DatasetContext] クラス変換: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, classList);
+          
+          // 座標を正規化 (0-1の範囲)
+          const centerX = (bbox.x + bbox.width / 2) / imageWidth;
+          const centerY = (bbox.y + bbox.height / 2) / imageHeight;
+          const width = bbox.width / imageWidth;
+          const height = bbox.height / imageHeight;
+          
+          return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+        }).join('\n');
+
+        await FileSystem.writeAsStringAsync(annotationPath, yoloAnnotations);
+        
+        console.log('YOLO形式アノテーションファイルを更新:', annotationPath);
       }
     } catch (error) {
       console.error('アノテーションファイル更新エラー:', error);

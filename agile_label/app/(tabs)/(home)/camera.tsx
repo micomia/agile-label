@@ -149,12 +149,9 @@ export default function CameraScreen() {
       
       // classes.txtファイルを更新
       const classesFile = `${datasetDir}classes.txt`;
-      const content = [
-        '# クラス一覧',
-        '# 画像にラベルを付けると、ここに自動的にクラス名が追加されます',
-        '',
-        ...classes.sort()
-      ].join('\n');
+      const content = classes.sort().join('\n');
+      
+      console.log(`[カメラ] classes.txtに保存するクラス:`, classes.sort());
       
       await FileSystem.writeAsStringAsync(classesFile, content);
       console.log(`[カメラ] classes.txtを更新しました: ${classes.length}個のクラス`, classes);
@@ -254,22 +251,53 @@ export default function CameraScreen() {
         to: destinationUri,
       });
 
-      // アノテーション情報をJSONファイルとして保存
+      // アノテーション情報をYOLO形式のtxtファイルとして保存
       if (bboxes.length > 0) {
-        const annotationFileName = `photo_${timestamp}.json`;
+        // 最新のクラス情報を再読み込み
+        let currentClasses = classes;
+        try {
+          const classesFile = `${targetDir}labels/classes.txt`;
+          const fileInfo = await FileSystem.getInfoAsync(classesFile);
+          if (fileInfo.exists) {
+            const classesContent = await FileSystem.readAsStringAsync(classesFile);
+            const loadedClasses = classesContent
+              .split('\n')
+              .filter(line => line.trim() && !line.startsWith('#'))
+              .map(line => line.trim());
+            
+            if (loadedClasses.length > 0) {
+              currentClasses = loadedClasses;
+              console.log(`[保存時] classes.txtから最新クラス読み込み:`, currentClasses);
+            }
+          }
+        } catch (error) {
+          console.log('クラス再読み込みエラー:', error);
+        }
+        
+        const annotationFileName = `photo_${timestamp}.txt`;
         const annotationUri = `${targetDir}${annotationFileName}`;
-        const annotationData = {
-          image: fileName,
-          bboxes: bboxes,
-          timestamp: timestamp,
-        };
         
-        await FileSystem.writeAsStringAsync(
-          annotationUri,
-          JSON.stringify(annotationData, null, 2)
-        );
+        // YOLO形式のアノテーション文字列を作成
+        const yoloAnnotations = bboxes.map(bbox => {
+          // クラス名をクラス番号に変換
+          const classIndex = currentClasses.indexOf(bbox.label || 'object');
+          const classNumber = classIndex >= 0 ? classIndex : 0; // 見つからない場合は0番
+          
+          console.log(`[アノテーション変換] クラス: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, currentClasses);
+          
+          // バウンディングボックスの座標を正規化 (0-1の範囲)
+          const centerX = (bbox.x + bbox.width / 2) / (imageLayout?.width || 1);
+          const centerY = (bbox.y + bbox.height / 2) / (imageLayout?.height || 1);
+          const width = bbox.width / (imageLayout?.width || 1);
+          const height = bbox.height / (imageLayout?.height || 1);
+          
+          // YOLO形式: class_number center_x center_y width height (0-1正規化)
+          return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+        }).join('\n');
         
-        console.log('アノテーション情報を保存:', annotationData);
+        await FileSystem.writeAsStringAsync(annotationUri, yoloAnnotations);
+        
+        console.log('YOLO形式アノテーション情報を保存:', annotationUri, yoloAnnotations);
       }
 
       // DatasetContextを更新

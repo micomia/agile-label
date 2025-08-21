@@ -109,27 +109,8 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
     await FileSystem.makeDirectoryAsync(imgsDir, { intermediates: true });
     await FileSystem.makeDirectoryAsync(labelsDir, { intermediates: true });
     
-    // 各画像をimgsフォルダにダウンロード
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      const filename = `${image.label || 'unlabeled'}_${image.id}.jpg`;
-      const fileUri = imgsDir + filename;
-      
-      try {
-        await FileSystem.downloadAsync(image.uri, fileUri);
-        
-        // ラベル情報があれば、対応するテキストファイルをlabelsフォルダに作成
-        if (image.label) {
-          const labelFilename = `${image.label}_${image.id}.txt`;
-          const labelFileUri = labelsDir + labelFilename;
-          await FileSystem.writeAsStringAsync(labelFileUri, image.label);
-        }
-      } catch (error) {
-        console.error(`画像 ${image.id} のダウンロードに失敗:`, error);
-      }
-    }
-
     // classes.txtファイルを作成（共有用の一時フォルダ内）
+    let classList: string[] = [];
     try {
       let allClasses: string[] = [];
       
@@ -160,19 +141,58 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       
       // 重複を除去してソート
       const uniqueLabels = Array.from(new Set(allClasses.filter(label => label))).sort();
+      classList = uniqueLabels;
       
-      const classesContent = [
-        '# クラス一覧',
-        '# このデータセットに含まれるクラス名のリスト',
-        '',
-        ...uniqueLabels
-      ].join('\n');
+      const classesContent = uniqueLabels.join('\n');
       
       const classesFilePath = labelsDir + 'classes.txt';
       await FileSystem.writeAsStringAsync(classesFilePath, classesContent);
       console.log(`[共有用] classes.txtを作成しました: ${uniqueLabels.length}個のクラス (一時フォルダ: ${classesFilePath})`, uniqueLabels);
     } catch (error) {
       console.error('共有用classes.txtの作成エラー:', error);
+    }
+    
+    // 各画像をimgsフォルダにダウンロードし、対応するYOLO形式ラベルファイルを作成
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      const filename = `${image.label || 'unlabeled'}_${image.id}.jpg`;
+      const fileUri = imgsDir + filename;
+      
+      try {
+        await FileSystem.downloadAsync(image.uri, fileUri);
+        
+        // バウンディングボックス情報があれば、YOLO形式のラベルファイルを作成
+        if (image.bboxes && image.bboxes.length > 0) {
+          const labelFilename = `${image.label || 'unlabeled'}_${image.id}.txt`;
+          const labelFileUri = labelsDir + labelFilename;
+          
+          // YOLO形式のアノテーション文字列を作成
+          const yoloAnnotations = image.bboxes.map(bbox => {
+            // クラス名をクラス番号に変換
+            const classIndex = classList.indexOf(bbox.label || 'object');
+            const classNumber = classIndex >= 0 ? classIndex : 0;
+            
+            console.log(`[エクスポート] クラス変換: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, classList);
+            
+            // 画像の実際のサイズを取得（仮の値を使用）
+            const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+            const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
+            
+            // 座標を正規化 (0-1の範囲)
+            const centerX = (bbox.x + bbox.width / 2) / imageWidth;
+            const centerY = (bbox.y + bbox.height / 2) / imageHeight;
+            const width = bbox.width / imageWidth;
+            const height = bbox.height / imageHeight;
+            
+            return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+          }).join('\n');
+          
+          await FileSystem.writeAsStringAsync(labelFileUri, yoloAnnotations);
+          console.log(`[エクスポート] YOLO形式ラベルファイルを作成: ${labelFileUri}`);
+        }
+      } catch (error) {
+        console.error(`画像 ${image.id} のダウンロードに失敗:`, error);
+      }
     }
     
     // シェア機能を使用（iOSではファイルアプリに保存可能）
