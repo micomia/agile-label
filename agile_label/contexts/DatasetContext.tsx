@@ -51,6 +51,39 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
   // 読み込み済みデータセットを追跡
   const [loadedDatasets, setLoadedDatasets] = useState<Set<string>>(new Set());
 
+  // classes.txtファイルからクラス数を読み取って更新する関数
+  const updateLabelCountFromClassesFile = async (datasetId: string) => {
+    try {
+      const classesFilePath = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/classes.txt`;
+      const fileInfo = await FileSystem.getInfoAsync(classesFilePath);
+      
+      if (fileInfo.exists) {
+        const classesContent = await FileSystem.readAsStringAsync(classesFilePath);
+        const classes = classesContent
+          .split('\n')
+          .filter(line => line.trim() && !line.startsWith('#'))
+          .map(line => line.trim());
+        
+        const actualClassCount = classes.length;
+        
+        setDatasets(prev => prev.map(dataset => {
+          if (dataset.id === datasetId) {
+            console.log(`[クラス数更新] データセット ${datasetId}: ${dataset.labelCount} -> ${actualClassCount}`);
+            return {
+              ...dataset,
+              labelCount: actualClassCount,
+            };
+          }
+          return dataset;
+        }));
+        
+        console.log(`[クラス数更新] classes.txtから読み取ったクラス数: ${actualClassCount}`, classes);
+      }
+    } catch (error) {
+      console.error('classes.txtからのクラス数読み取りエラー:', error);
+    }
+  };
+
   // classes.txtファイルを更新する関数
   const updateClassesFile = async (datasetId: string, allLabels: string[]) => {
     try {
@@ -78,8 +111,12 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       
       await FileSystem.writeAsStringAsync(classesFilePath, content);
       console.log(`classes.txtを更新しました: ${uniqueLabels.length}個のクラス`, uniqueLabels);
+      
+      // 更新されたクラス数を返す
+      return uniqueLabels.length;
     } catch (error) {
       console.error('classes.txtの更新エラー:', error);
+      return 0;
     }
   };
 
@@ -166,113 +203,39 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addImageToDataset = async (datasetId: string, imageUri: string, bboxes?: BBox[]) => {
-    // アノテーションファイルからラベル情報を読み取り
-    let imageLabel: string | undefined;
-    let annotationBboxes: BBox[] = [];
-    
-    try {
-      // 画像ファイル名からアノテーションファイル名を推測
-      const imageName = imageUri.split('/').pop();
-      if (imageName) {
-        // YOLO形式のtxtファイルを探す
-        const annotationName = imageName.replace(/\.(jpg|jpeg|png)$/i, '.txt');
-        const annotationPath = imageUri.replace(imageName, annotationName);
-        
-        const annotationInfo = await FileSystem.getInfoAsync(annotationPath);
-        if (annotationInfo.exists) {
-          const annotationContent = await FileSystem.readAsStringAsync(annotationPath);
-          
-          // classes.txtからクラス名リストを取得
-          const datasetId = imageUri.split('/')[imageUri.split('/').length - 2]; // パスからdatasetIdを抽出
-          const classesPath = `${FileSystem.documentDirectory}datasets/${datasetId}/labels/classes.txt`;
-          let classList: string[] = [];
-          
-          try {
-            const classesContent = await FileSystem.readAsStringAsync(classesPath);
-            classList = classesContent.split('\n').filter(line => line.trim()).map(line => line.trim());
-          } catch (classError) {
-            console.log('classes.txt読み取りエラー:', classError);
-          }
-          
-          // YOLO形式のアノテーション行を解析
-          const lines = annotationContent.split('\n').filter(line => line.trim());
-          annotationBboxes = lines.map((line, index) => {
-            const parts = line.trim().split(/\s+/);
-            if (parts.length >= 5) {
-              const classNumber = parseInt(parts[0], 10);
-              const centerX = parseFloat(parts[1]);
-              const centerY = parseFloat(parts[2]);
-              const width = parseFloat(parts[3]);
-              const height = parseFloat(parts[4]);
-              
-              // クラス番号からクラス名を取得
-              const className = classList[classNumber] || 'object';
-              
-              // 画像の実際のサイズを取得（仮の値を使用）
-              const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
-              const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
-              
-              // 正規化された座標からピクセル座標に変換し、中心座標から左上座標に変換
-              const bbox: BBox = {
-                id: `bbox_${Date.now()}_${index}`,
-                x: (centerX - width / 2) * imageWidth,
-                y: (centerY - height / 2) * imageHeight,
-                width: width * imageWidth,
-                height: height * imageHeight,
-                label: className,
-              };
-              
-              return bbox;
-            }
-            return null;
-          }).filter(bbox => bbox !== null) as BBox[];
-          
-          // 最初のBBoxのラベルを画像ラベルとして使用
-          if (annotationBboxes.length > 0) {
-            imageLabel = annotationBboxes[0].label;
-          }
-        }
-      }
-    } catch (error) {
-      console.log('アノテーション読み取りエラー (無視):', error);
-    }
-
-    // 渡されたbboxesがある場合はそれを使用、そうでなければアノテーションファイルから読み取ったものを使用
-    const finalBboxes = bboxes && bboxes.length > 0 ? bboxes : (annotationBboxes.length > 0 ? annotationBboxes : undefined);
-    
+    const addImageToDataset = async (datasetId: string, imageUri: string, bboxes?: BBox[]) => {
+    // 新しい画像オブジェクトを作成
     const newImage: ImageData = {
-      id: Date.now().toString(),
+      id: `${datasetId}-${Date.now()}`,
       uri: imageUri,
-      label: imageLabel,
       createdAt: new Date(),
-      bboxes: finalBboxes,
+      bboxes: bboxes || [],
     };
 
-    console.log('addImageToDataset呼び出し:', { datasetId, imageUri, detectedLabel: imageLabel });
-
+    // classes.txtファイルを更新（既存の画像のラベルも含める）
+    const existingDataset = datasets.find(d => d.id === datasetId);
+    const existingLabels = existingDataset?.images?.filter(img => img.label).map(img => img.label!) || [];
+    const newLabels = bboxes?.map(bbox => bbox.label).filter(Boolean) || [];
+    const allLabels = [...existingLabels, ...newLabels].filter(Boolean) as string[];
+    
+    const actualClassCount = await updateClassesFile(datasetId, allLabels);
+    
     setDatasets(prev => prev.map(dataset => {
       if (dataset.id === datasetId) {
         const updatedImages = [...dataset.images, newImage];
-        const uniqueLabels = new Set(updatedImages.filter(img => img.label).map(img => img.label));
         
         console.log('データセット更新:', {
           datasetId,
           previousImageCount: dataset.images.length,
           newImageCount: updatedImages.length,
-          labelCount: uniqueLabels.size,
-          detectedLabels: Array.from(uniqueLabels)
+          labelCount: actualClassCount,
         });
 
-        // classes.txtファイルを更新
-        const allLabels = updatedImages.filter(img => img.label).map(img => img.label!);
-        updateClassesFile(datasetId, allLabels);
-        
         return {
           ...dataset,
           images: updatedImages,
           imageCount: updatedImages.length,
-          labelCount: uniqueLabels.size,
+          labelCount: actualClassCount,
         };
       }
       return dataset;
@@ -331,7 +294,19 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
 
             // classes.txtファイルを更新
             const allLabels = allImages.filter(img => img.label).map(img => img.label!);
-            updateClassesFile(datasetId, allLabels);
+            
+            // 非同期処理のため、setDatasetsの外で実行してからsetDatasetsを呼ぶ
+            updateClassesFile(datasetId, allLabels).then(actualClassCount => {
+              setDatasets(prevDatasets => prevDatasets.map(prevDataset => {
+                if (prevDataset.id === datasetId) {
+                  return {
+                    ...prevDataset,
+                    labelCount: actualClassCount,
+                  };
+                }
+                return prevDataset;
+              }));
+            });
             
             return {
               ...dataset,
@@ -443,7 +418,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       deleteDataset, 
       addImageToDataset, 
       loadDatasetImages,
-      deleteBboxFromImage 
+      deleteBboxFromImage
     }}>
       {children}
     </DatasetContext.Provider>

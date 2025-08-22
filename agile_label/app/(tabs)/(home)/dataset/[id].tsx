@@ -20,6 +20,7 @@ export default function DatasetDetailScreen() {
     React.useCallback(() => {
       if (id) {
         loadDatasetImages(id);
+        // クラス数はloadDatasetImages内で自動的に更新されます
       }
     }, [id, loadDatasetImages])
   );
