@@ -106,7 +106,7 @@ export default function AboutScreen() {
         {/* 著作権情報 */}
         <View style={styles.section}>
           <Text style={styles.copyright}>
-            © 2024 Agile Label. All rights reserved.
+            © 2025 micomia Co., Ltd.
           </Text>
         </View>
       </ScrollView>
