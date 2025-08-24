@@ -21,6 +21,16 @@ export default function CreateScreen() {
       return;
     }
 
+    if (!datasetDescription.trim()) {
+      Alert.alert('エラー', 'データセットの説明を入力してください');
+      return;
+    }
+
+    if (!classNames.trim()) {
+      Alert.alert('エラー', 'クラス名を入力してください');
+      return;
+    }
+
     // データセットを作成（クラス名も含めて）
     addDataset(datasetName.trim(), datasetDescription.trim(), classNames.trim());
     
@@ -58,7 +68,7 @@ export default function CreateScreen() {
             style={styles.input}
             value={datasetName}
             onChangeText={setDatasetName}
-            placeholder="例: birds_dataset"
+            placeholder="birds_dataset"
             placeholderTextColor={Colors.text + '80'}
             maxLength={50}
           />
@@ -72,7 +82,7 @@ export default function CreateScreen() {
             style={[styles.input, styles.textArea]}
             value={datasetDescription}
             onChangeText={setDatasetDescription}
-            placeholder="鳥の画像データセットです。"
+            placeholder="複数の鳥の画像データセット"
             placeholderTextColor={Colors.text + '80'}
             multiline
             numberOfLines={4}
@@ -89,7 +99,7 @@ export default function CreateScreen() {
             style={[styles.input, styles.textArea]}
             value={classNames}
             onChangeText={setClassNames}
-            placeholder="鳥, 猫, 犬&#10;（改行またはカンマ区切りで複数のクラスを入力）"
+            placeholder="duck, swan, penguin&#10;（改行またはカンマ区切りで複数のクラスを入力）"
             placeholderTextColor={Colors.text + '80'}
             multiline
             numberOfLines={3}
@@ -103,7 +113,7 @@ export default function CreateScreen() {
         <View style={styles.noteContainer}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
           <Text style={styles.noteText}>
-            データセット名は後から変更できます。説明とクラス名は任意項目です。クラス名は撮影時のラベル付けで使用されます。
+            クラス名入力は改行区切りにも対応しています。
           </Text>
         </View>
       </ScrollView>
@@ -114,13 +124,13 @@ export default function CreateScreen() {
           onPress={handleCreate} 
           style={[
             styles.createButton,
-            !datasetName.trim() && styles.createButtonDisabled
+            (!datasetName.trim() || !datasetDescription.trim() || !classNames.trim()) && styles.createButtonDisabled
           ]}
-          disabled={!datasetName.trim()}
+          disabled={!datasetName.trim() || !datasetDescription.trim() || !classNames.trim()}
         >
           <Text style={[
             styles.createButtonText,
-            !datasetName.trim() && styles.createButtonTextDisabled
+            (!datasetName.trim() || !datasetDescription.trim() || !classNames.trim()) && styles.createButtonTextDisabled
           ]}>
             作成
           </Text>
