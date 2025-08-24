@@ -121,7 +121,7 @@ export default function DatasetDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={Colors.text} />
+            <Ionicons name="chevron-back" size={24} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>データセットが見つかりません</Text>
           <View style={{ width: 40 }} />
@@ -138,7 +138,7 @@ export default function DatasetDetailScreen() {
       {/* ヘッダー */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
+          <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>{dataset.name}</Text>
         <TouchableOpacity onPress={handleSaveDataset} style={styles.saveDatasetButton}>

@@ -101,6 +101,10 @@ export default function CameraScreen() {
   const [resizeHandle, setResizeHandle] = useState<'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight' | null>(null);
   const [initialTouchPoint, setInitialTouchPoint] = useState<{ x: number; y: number } | null>(null);
   
+  // 保存完了メッセージの状態
+  const [showSaveMessage, setShowSaveMessage] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  
   const cameraRef = useRef<CameraView>(null);
 
   // データセット固有のクラス情報を読み込み・保存
@@ -417,21 +421,19 @@ export default function CameraScreen() {
         await addImageToDataset(datasetId, destinationUri, bboxes);
       }
 
-      Alert.alert(
-        '保存完了',
-        `写真がデータセットに保存されました${bboxes.length > 0 ? `\n(${bboxes.length}個のアノテーション付き)` : ''}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setCapturedPhoto(null);
-              setActualImageSize(null); // 実際の画像サイズもリセット
-              setBboxes([]);
-              setHistory([]); // 履歴もリセット
-            },
-          },
-        ]
-      );
+      // 保存完了メッセージを表示
+      setSaveMessage(`写真がデータセットに保存されました${bboxes.length > 0 ? `\n(${bboxes.length}個のアノテーション付き)` : ''}`);
+      setShowSaveMessage(true);
+
+      // 2秒後に自動的にカメラ画面に戻る
+      setTimeout(() => {
+        setShowSaveMessage(false);
+        setSaveMessage('');
+        setCapturedPhoto(null);
+        setActualImageSize(null); // 実際の画像サイズもリセット
+        setBboxes([]);
+        setHistory([]); // 履歴もリセット
+      }, 2000);
 
       console.log('写真が保存されました:', destinationUri);
     } catch (error) {
@@ -836,9 +838,9 @@ export default function CameraScreen() {
         <View style={styles.topBar}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.headerButton} onPress={retakePhoto}>
-              <Ionicons name="arrow-back" size={24} color="white" />
+              <Ionicons name="close" size={24} color="white" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>プレビュー</Text>
+            <Text style={styles.headerTitle}>アノテーション</Text>
             <View style={styles.headerButton} />
           </View>
         </View>
@@ -982,28 +984,36 @@ export default function CameraScreen() {
 
         {/* 下部の黒い帯 */}
         <View style={styles.bottomBar}>
-          {/* Undoボタン・保存ボタン・クラス選択など既存の内容を配置 */}
-          <TouchableOpacity 
-            style={[styles.undoButton, { opacity: history.length > 0 ? 1 : 0.5 }]} 
-            onPress={undoLastAction}
-            disabled={history.length === 0}
-          >
-            <Ionicons name="arrow-undo" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={() => savePhotoToDataset(capturedPhoto)}
-          >
-            <Ionicons name="checkmark" size={32} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.classSelector, { backgroundColor: `${getClassColor(selectedClass, classes)}CC` }]} 
-            onPress={() => setShowClassModal(true)}
-          >
-            <View style={[styles.classColorIndicator, { backgroundColor: getClassColor(selectedClass, classes) }]} />
-            <Text style={styles.classSelectorText}>クラス: {selectedClass}</Text>
-            <Ionicons name="chevron-up" size={16} color="white" />
-          </TouchableOpacity>
+          {/* ボタンを横並びに配置 */}
+          <View style={styles.bottomButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.bottomButton, styles.undoButtonHorizontal, { opacity: history.length > 0 ? 1 : 0.5 }]} 
+              onPress={undoLastAction}
+              disabled={history.length === 0}
+            >
+              <Ionicons name="arrow-undo" size={24} color="white" />
+              <Text style={styles.bottomButtonText}>戻す</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.bottomButton, styles.classSelectorHorizontal, styles.classSelectorWide, { backgroundColor: `${getClassColor(selectedClass, classes)}CC` }]} 
+              onPress={() => setShowClassModal(true)}
+            >
+              <View style={styles.classButtonContent}>
+                <View style={[styles.classColorIndicator, { backgroundColor: getClassColor(selectedClass, classes) }]} />
+                <Ionicons name="chevron-up" size={16} color="white" />
+              </View>
+              <Text style={styles.bottomButtonText}>{selectedClass}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.bottomButton, styles.saveButtonHorizontal]}
+              onPress={() => savePhotoToDataset(capturedPhoto)}
+            >
+              <Ionicons name="checkmark" size={24} color="white" />
+              <Text style={styles.bottomButtonText}>完了</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* クラス選択モーダル */}
@@ -1082,6 +1092,16 @@ export default function CameraScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* 保存完了メッセージのオーバーレイ */}
+        {showSaveMessage && (
+          <View style={styles.saveMessageOverlay}>
+            <View style={styles.saveMessageContainer}>
+              <Text style={styles.saveMessageTitle}>保存完了</Text>
+              <Text style={styles.saveMessageText}>{saveMessage}</Text>
+            </View>
+          </View>
+        )}
       </GestureHandlerRootView>
     );
   }
@@ -1092,7 +1112,7 @@ export default function CameraScreen() {
       <View style={styles.topBar}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="white" />
+            <Ionicons name="close" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>カメラ</Text>
           <TouchableOpacity style={styles.headerButton} onPress={toggleCameraFacing}>
@@ -1418,5 +1438,74 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // 横並びボタン用のスタイル
+  bottomButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  bottomButton: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginHorizontal: 8,
+    borderRadius: 12,
+    minHeight: 60,
+  },
+  bottomButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  undoButtonHorizontal: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  classSelectorHorizontal: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  classSelectorWide: {
+    flex: 1.5, // 他のボタンより1.5倍の幅
+  },
+  saveButtonHorizontal: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  // 保存メッセージ用のスタイル
+  saveMessageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  saveMessageContainer: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 12,
+    marginHorizontal: 40,
+    alignItems: 'center',
+  },
+  saveMessageTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  saveMessageText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
