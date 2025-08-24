@@ -21,8 +21,24 @@ interface ImageGalleryProps {
   onDeleteBbox?: (imageId: string, bboxId: string) => void; // bbox削除コールバック
 }
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const itemSize = screenWidth / 3; // 3列表示、間隔なし
+
+// camera.tsxと同じ画面構成（3:4の縦横比）
+const topBarHeight = 120;
+const bottomBarHeight = 120; // 180から120に減らして画像領域を確保
+const cameraHeight = screenHeight - topBarHeight - bottomBarHeight;
+const cameraWidth = screenWidth;
+const aspectRatio = 3 / 4;
+
+// カメラビューを3:4の縦横比に調整
+let adjustedCameraWidth = cameraWidth;
+let adjustedCameraHeight = cameraWidth / aspectRatio;
+
+if (adjustedCameraHeight > cameraHeight) {
+  adjustedCameraHeight = cameraHeight;
+  adjustedCameraWidth = cameraHeight * aspectRatio;
+}
 
 // クラス毎の色定義
 const CLASS_COLORS: { [key: string]: string } = {
@@ -39,7 +55,7 @@ const CLASS_COLORS: { [key: string]: string } = {
 // デフォルトカラー（新しいクラス用）
 const DEFAULT_COLORS = ['#FF9F43', '#10AC84', '#A55EEA', '#FD79A8', '#00B894', '#FDCB6E', '#6C5CE7', '#A29BFE'];
 
-// クラス名から色を取得する関数
+// クラス名から色を取得する関数（camera.tsxから流用・改良）
 function getClassColor(className: string): string {
   if (CLASS_COLORS[className]) {
     return CLASS_COLORS[className];
@@ -58,6 +74,7 @@ function getClassColor(className: string): string {
 export function ImageGallery({ images, onDeleteBbox }: ImageGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [imageLayout, setImageLayout] = useState<{ width: number; height: number; x: number; y: number } | null>(null);
+  const [selectedBboxId, setSelectedBboxId] = useState<string | null>(null);
   const modalFlatListRef = useRef<FlatList>(null);
 
   const handleSaveImage = async (image: ImageData) => {
@@ -161,28 +178,6 @@ export function ImageGallery({ images, onDeleteBbox }: ImageGalleryProps) {
         statusBarTranslucent={true}
       >
         <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={() => setSelectedImageIndex(null)}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={24} color="#ffffff" />
-            </TouchableOpacity>
-            {selectedImageIndex !== null && (
-              <Text style={styles.imageCounter}>
-                {selectedImageIndex + 1} / {images.length}
-              </Text>
-            )}
-            {selectedImageIndex !== null && (
-              <TouchableOpacity
-                onPress={() => handleSaveImage(images[selectedImageIndex])}
-                style={styles.saveButton}
-              >
-                <Ionicons name="download-outline" size={24} color="#ffffff" />
-              </TouchableOpacity>
-            )}
-          </View>
-
           {selectedImageIndex !== null && (
             <FlatList
               ref={modalFlatListRef}
@@ -200,102 +195,205 @@ export function ImageGallery({ images, onDeleteBbox }: ImageGalleryProps) {
               onMomentumScrollEnd={(event) => {
                 const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
                 setSelectedImageIndex(newIndex);
+                // 画像が変わったらBBox選択をリセット
+                setSelectedBboxId(null);
               }}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <View style={styles.modalImageContainer}>
-                  <View style={styles.imageContainer}>
+                  {/* 上部の黒い帯 - camera.tsxと同じ構成 */}
+                  <View style={styles.topBar}>
+                    <View style={styles.header}>
+                      <TouchableOpacity 
+                        style={styles.headerButton} 
+                        onPress={() => setSelectedImageIndex(null)}
+                      >
+                        <Ionicons name="arrow-back" size={24} color="white" />
+                      </TouchableOpacity>
+                      <Text style={styles.headerTitle}>
+                        {index + 1} / {images.length}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.headerButton}
+                        onPress={() => handleSaveImage(item)}
+                      >
+                        <Ionicons name="download-outline" size={24} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* 中央の画像エリア - camera.tsxと同じ構成 */}
+                  <View style={styles.cameraContainer}>
                     <Image
                       source={{ uri: item.uri }}
-                      style={styles.fullImage}
-                      resizeMode="contain"
+                      style={{
+                        width: adjustedCameraWidth,
+                        height: adjustedCameraHeight,
+                        resizeMode: 'contain',
+                        borderRadius: 8,
+                      }}
                       onLayout={(event) => {
                         const { width, height, x, y } = event.nativeEvent.layout;
                         setImageLayout({ width, height, x, y });
                       }}
                     />
                     
-                    {/* BBoxオーバーレイ */}
+                    {/* BBoxオーバーレイ - camera.tsxのアノテーションロジックを流用 */}
                     {item.bboxes && item.bboxes.length > 0 && imageLayout && (
-                      <View style={styles.bboxOverlay}>
+                      <View style={styles.annotationOverlay}>
+                        {(() => {
+                          console.log('ImageGallery BBox情報:', {
+                            imageId: item.id,
+                            bboxCount: item.bboxes?.length || 0,
+                            imageLayout,
+                            adjustedCameraWidth,
+                            adjustedCameraHeight,
+                            bboxes: item.bboxes
+                          });
+                          return null;
+                        })()}
+                        
                         {item.bboxes.map((bbox: BBox) => {
                           const bboxColor = getClassColor(bbox.label || 'object');
-                          // bboxの座標は画像の実際のサイズに対する相対位置として保存されているため、
-                          // 表示される画像のサイズに合わせてスケーリングする
-                          const scaledX = (bbox.x / 100) * imageLayout.width;
-                          const scaledY = (bbox.y / 100) * imageLayout.height;
-                          const scaledWidth = (bbox.width / 100) * imageLayout.width;
-                          const scaledHeight = (bbox.height / 100) * imageLayout.height;
+                          const isSelected = selectedBboxId === bbox.id;
+                          
+                          // デバッグ用ログ
+                          console.log('BBox描画情報:', {
+                            bboxId: bbox.id,
+                            originalBbox: bbox,
+                            imageLayout,
+                            scalingType: 'percentage-based'
+                          });
+                          
+                          // camera.tsxと同じ座標計算ロジック
+                          // camera.tsxで作成されたBBoxは、adjustedCameraWidth/Heightを基準にしているため
+                          // 現在の表示サイズに合わせてスケールする必要がある
+                          const cameraScaleX = imageLayout.width / adjustedCameraWidth;
+                          const cameraScaleY = imageLayout.height / adjustedCameraHeight;
+                          
+                          let scaledX = bbox.x * cameraScaleX;
+                          let scaledY = bbox.y * cameraScaleY;
+                          let scaledWidth = bbox.width * cameraScaleX;
+                          let scaledHeight = bbox.height * cameraScaleY;
+                          
+                          console.log('BBox座標変換:', {
+                            originalBbox: bbox,
+                            cameraSize: { width: adjustedCameraWidth, height: adjustedCameraHeight },
+                            currentImageSize: { width: imageLayout.width, height: imageLayout.height },
+                            scale: { x: cameraScaleX, y: cameraScaleY },
+                            scaledCoords: { scaledX, scaledY, scaledWidth, scaledHeight }
+                          });
                           
                           return (
-                            <TouchableOpacity
-                              key={bbox.id}
-                              style={[
-                                styles.bbox,
-                                {
-                                  left: scaledX,
-                                  top: scaledY,
-                                  width: scaledWidth,
-                                  height: scaledHeight,
-                                  borderColor: bboxColor,
-                                  backgroundColor: `${bboxColor}30`,
-                                }
-                              ]}
-                              onLongPress={() => {
-                                handleDeleteBbox(item.id, bbox.id);
-                              }}
-                              delayLongPress={800}
-                              activeOpacity={0.7}
-                            >
-                              {/* BBoxラベル */}
+                            <View key={bbox.id} style={{ position: 'absolute' }}>
+                              <TouchableOpacity
+                                style={[
+                                  styles.bbox,
+                                  {
+                                    left: imageLayout.x + scaledX,
+                                    top: imageLayout.y + scaledY,
+                                    width: scaledWidth,
+                                    height: scaledHeight,
+                                    borderColor: bboxColor,
+                                    backgroundColor: `${bboxColor}30`, // 透明度30%
+                                    borderWidth: isSelected ? 3 : 2, // 選択時は太い枠
+                                    elevation: isSelected ? 3 : 1, // Android用の影
+                                    shadowColor: bboxColor, // iOS用の影
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: isSelected ? 0.4 : 0.2,
+                                    shadowRadius: isSelected ? 4 : 2,
+                                  }
+                                ]}
+                                onPress={() => {
+                                  // タップで選択状態を切り替え
+                                  setSelectedBboxId(selectedBboxId === bbox.id ? null : bbox.id);
+                                }}
+                                onLongPress={() => {
+                                  handleDeleteBbox(item.id, bbox.id);
+                                }}
+                                delayLongPress={800}
+                                activeOpacity={0.7}
+                              />
+                              
+                              {/* 選択時のリサイズハンドル - camera.tsxから流用 */}
+                              {isSelected && imageLayout && (
+                                <>
+                                  {/* 四隅のリサイズハンドル */}
+                                  <View style={[styles.resizeHandle, {
+                                    left: imageLayout.x + scaledX - 7,
+                                    top: imageLayout.y + scaledY - 7,
+                                    backgroundColor: bboxColor,
+                                  }]} />
+                                  <View style={[styles.resizeHandle, {
+                                    left: imageLayout.x + scaledX + scaledWidth - 7,
+                                    top: imageLayout.y + scaledY - 7,
+                                    backgroundColor: bboxColor,
+                                  }]} />
+                                  <View style={[styles.resizeHandle, {
+                                    left: imageLayout.x + scaledX - 7,
+                                    top: imageLayout.y + scaledY + scaledHeight - 7,
+                                    backgroundColor: bboxColor,
+                                  }]} />
+                                  <View style={[styles.resizeHandle, {
+                                    left: imageLayout.x + scaledX + scaledWidth - 7,
+                                    top: imageLayout.y + scaledY + scaledHeight - 7,
+                                    backgroundColor: bboxColor,
+                                  }]} />
+                                </>
+                              )}
+                              
+                              {/* BBoxラベル - camera.tsxのスタイルを流用 */}
                               <View
                                 style={[
                                   styles.bboxLabel,
-                                  { backgroundColor: bboxColor }
+                                  {
+                                    left: imageLayout.x + scaledX,
+                                    top: imageLayout.y + scaledY - 25,
+                                    backgroundColor: bboxColor,
+                                  }
                                 ]}
                               >
                                 <Text style={styles.bboxLabelText}>
                                   {bbox.label || 'object'}
                                 </Text>
                               </View>
-                            </TouchableOpacity>
+                            </View>
                           );
                         })}
                       </View>
                     )}
                   </View>
-                  
-                  <View style={styles.imageInfo}>
-                    {item.label && (
-                      <View style={styles.infoRow}>
-                        <Ionicons name="pricetag-outline" size={20} color="#ffffff" />
-                        <Text style={styles.infoLabel}>ラベル</Text>
-                        <Text style={styles.infoValue}>{item.label}</Text>
-                      </View>
-                    )}
-                    
-                    {item.bboxes && item.bboxes.length > 0 && (
-                      <View style={styles.infoRow}>
-                        <Ionicons name="square-outline" size={20} color="#ffffff" />
-                        <Text style={styles.infoLabel}>BBox</Text>
-                        <Text style={styles.infoValue}>{item.bboxes.length}個</Text>
-                      </View>
-                    )}
-                    
-                    <View style={styles.infoRow}>
-                      <Ionicons name="calendar-outline" size={20} color="#ffffff" />
-                      <Text style={styles.infoLabel}>撮影日時</Text>
-                      <Text style={styles.infoValue}>
-                        {item.createdAt.toLocaleDateString('ja-JP')} {item.createdAt.toLocaleTimeString('ja-JP')}
-                      </Text>
-                    </View>
-                    
-                    {item.bboxes && item.bboxes.length > 0 && (
-                      <View style={styles.bboxHelp}>
-                        <Text style={styles.bboxHelpText}>
-                          長押しでBBoxを削除
+
+                  {/* 下部の黒い帯 - camera.tsxと同じ構成 */}
+                  <View style={styles.bottomBar}>
+                    {/* 画像情報を表示 */}
+                    <View style={styles.imageInfoContainer}>
+                      {item.label && (
+                        <View style={styles.infoItem}>
+                          <Ionicons name="pricetag-outline" size={16} color="#ffffff" />
+                          <Text style={styles.infoText}>ラベル: {item.label}</Text>
+                        </View>
+                      )}
+                      
+                      {item.bboxes && item.bboxes.length > 0 && (
+                        <View style={styles.infoItem}>
+                          <Ionicons name="square-outline" size={16} color="#ffffff" />
+                          <Text style={styles.infoText}>BBox: {item.bboxes.length}個</Text>
+                        </View>
+                      )}
+                      
+                      <View style={styles.infoItem}>
+                        <Ionicons name="calendar-outline" size={16} color="#ffffff" />
+                        <Text style={styles.infoText}>
+                          {item.createdAt.toLocaleDateString('ja-JP')} {item.createdAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                       </View>
-                    )}
+                      
+                      {item.bboxes && item.bboxes.length > 0 && (
+                        <Text style={styles.helpText}>
+                          タップで選択 • 長押しでBBoxを削除
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 </View>
               )}
@@ -373,42 +471,60 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  // camera.tsxと同じモーダルスタイル
   modal: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  saveButton: {
-    padding: 8,
-  },
-  imageCounter: {
-    fontSize: 16,
-    color: '#ffffff',
-    fontWeight: '500',
+    backgroundColor: 'black',
   },
   modalImageContainer: {
     width: screenWidth,
     flex: 1,
+  },
+  // camera.tsxと同じレイアウトスタイル
+  topBar: {
+    height: topBarHeight,
+    backgroundColor: 'black',
+    justifyContent: 'flex-end',
+    borderBottomWidth: 2, // デバッグ用: 下部境界線
+    borderBottomColor: 'red',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: 'transparent',
+  },
+  headerButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  cameraContainer: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+    borderTopWidth: 2, // デバッグ用: 上部境界線
+    borderTopColor: 'red',
+    borderBottomWidth: 2, // デバッグ用: 下部境界線
+    borderBottomColor: 'red',
   },
-  imageContainer: {
-    position: 'relative',
-    width: screenWidth,
-    height: '70%',
+  bottomBar: {
+    height: bottomBarHeight,
+    backgroundColor: 'black',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopWidth: 2, // デバッグ用: 上部境界線
+    borderTopColor: 'blue',
   },
-  fullImage: {
-    width: screenWidth,
-    height: '70%',
-  },
-  bboxOverlay: {
+  // アノテーション用のスタイル
+  annotationOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -420,6 +536,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FF6B6B',
     backgroundColor: 'rgba(255, 107, 107, 0.2)',
+  },
+  resizeHandle: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: 'white',
+    backgroundColor: '#007AFF',
   },
   bboxLabel: {
     position: 'absolute',
@@ -435,37 +560,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  imageInfo: {
-    padding: 20,
-    marginTop: 20,
+  // 画像情報表示用のスタイル
+  imageInfoContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
-  infoRow: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  infoLabel: {
-    fontSize: 16,
+  infoText: {
     color: '#ffffff',
-    marginLeft: 12,
-    flex: 1,
+    fontSize: 14,
+    marginLeft: 8,
   },
-  infoValue: {
-    fontSize: 16,
+  helpText: {
     color: '#ffffff',
-    fontWeight: '500',
-    opacity: 0.8,
-  },
-  bboxHelp: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-  },
-  bboxHelpText: {
     fontSize: 12,
-    color: '#ffffff',
     textAlign: 'center',
     opacity: 0.8,
+    marginTop: 8,
   },
 });

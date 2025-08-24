@@ -79,6 +79,7 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [actualImageSize, setActualImageSize] = useState<{ width: number; height: number } | null>(null); // 実際の画像サイズ
   const [bboxes, setBboxes] = useState<BBox[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
@@ -275,11 +276,15 @@ export default function CameraScreen() {
 
         if (photo) {
           // 画像の解像度情報をログに出力
-          console.log('撮影した画像の情報:', {
-            width: photo.width,
-            height: photo.height,
-            uri: photo.uri
-          });
+          console.log('=== 撮影した画像の詳細情報 ===');
+          console.log('実際の画像サイズ:', photo.width, 'x', photo.height);
+          console.log('URI:', photo.uri);
+          console.log('期待値: 3024x4032かどうか:', photo.width === 3024 && photo.height === 4032);
+          console.log('アスペクト比:', (photo.width / photo.height).toFixed(3), '(期待値: 0.750)');
+          console.log('========================');
+          
+          // 実際の画像サイズを保存
+          setActualImageSize({ width: photo.width, height: photo.height });
           
           // プレビュー画面に移行
           setCapturedPhoto(photo.uri);
@@ -358,11 +363,36 @@ export default function CameraScreen() {
           
           console.log(`[アノテーション変換] クラス: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, currentClasses);
           
-          // バウンディングボックスの座標を正規化 (0-1の範囲)
-          const centerX = (bbox.x + bbox.width / 2) / (imageLayout?.width || 1);
-          const centerY = (bbox.y + bbox.height / 2) / (imageLayout?.height || 1);
-          const width = bbox.width / (imageLayout?.width || 1);
-          const height = bbox.height / (imageLayout?.height || 1);
+          // 実際の画像サイズと表示サイズの比率を計算
+          if (!actualImageSize || !imageLayout) {
+            console.error('画像サイズ情報が不足しています:', { actualImageSize, imageLayout });
+            return `${classNumber} 0 0 0 0`; // エラー時はデフォルト値
+          }
+          
+          // 表示座標を実際の画像座標に変換
+          const scaleX = actualImageSize.width / imageLayout.width;
+          const scaleY = actualImageSize.height / imageLayout.height;
+          
+          const actualX = bbox.x * scaleX;
+          const actualY = bbox.y * scaleY;
+          const actualWidth = bbox.width * scaleX;
+          const actualHeight = bbox.height * scaleY;
+          
+          // バウンディングボックスの座標を正規化 (0-1の範囲) - 実際の画像サイズで正規化
+          const centerX = (actualX + actualWidth / 2) / actualImageSize.width;
+          const centerY = (actualY + actualHeight / 2) / actualImageSize.height;
+          const width = actualWidth / actualImageSize.width;
+          const height = actualHeight / actualImageSize.height;
+          
+          console.log(`[座標変換詳細] BBox: ${bbox.id}`, {
+            表示座標: { x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height },
+            表示サイズ: { width: imageLayout.width, height: imageLayout.height },
+            実際の画像サイズ: actualImageSize,
+            スケール: { x: scaleX, y: scaleY },
+            実際の座標: { x: actualX, y: actualY, width: actualWidth, height: actualHeight },
+            正規化座標: { centerX, centerY, width, height },
+            最終YOLO値: `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`
+          });
           
           // YOLO形式: class_number center_x center_y width height (0-1正規化)
           return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
@@ -370,7 +400,15 @@ export default function CameraScreen() {
         
         await FileSystem.writeAsStringAsync(annotationUri, yoloAnnotations);
         
-        console.log('YOLO形式アノテーション情報を保存:', annotationUri, yoloAnnotations);
+        console.log('=== YOLO形式アノテーション保存詳細 ===');
+        console.log('ファイルパス:', annotationUri);
+        console.log('画像サイズ:', actualImageSize);
+        console.log('BBox数:', bboxes.length);
+        console.log('アノテーション内容:');
+        yoloAnnotations.split('\n').forEach((line, index) => {
+          console.log(`  [${index}] ${line}`);
+        });
+        console.log('================================');
       }
 
       // DatasetContextを更新
@@ -387,6 +425,7 @@ export default function CameraScreen() {
             text: 'OK',
             onPress: () => {
               setCapturedPhoto(null);
+              setActualImageSize(null); // 実際の画像サイズもリセット
               setBboxes([]);
               setHistory([]); // 履歴もリセット
             },
@@ -403,6 +442,7 @@ export default function CameraScreen() {
 
   function retakePhoto() {
     setCapturedPhoto(null);
+    setActualImageSize(null); // 実際の画像サイズもリセット
     setBboxes([]);
     setHistory([]); // 履歴もリセット
   }
