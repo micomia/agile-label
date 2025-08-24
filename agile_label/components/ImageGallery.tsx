@@ -26,7 +26,7 @@ const itemSize = screenWidth / 3; // 3列表示、間隔なし
 
 // camera.tsxと同じ画面構成（3:4の縦横比）
 const topBarHeight = 120;
-const bottomBarHeight = 180;
+const bottomBarHeight = 120; // 180から120に減らして画像領域を確保
 const cameraHeight = screenHeight - topBarHeight - bottomBarHeight;
 const cameraWidth = screenWidth;
 const aspectRatio = 3 / 4;
@@ -506,6 +506,8 @@ const styles = StyleSheet.create({
     height: topBarHeight,
     backgroundColor: 'black',
     justifyContent: 'flex-end',
+    borderBottomWidth: 2, // デバッグ用: 下部境界線
+    borderBottomColor: 'red',
   },
   header: {
     flexDirection: 'row',
@@ -529,12 +531,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
+    borderTopWidth: 2, // デバッグ用: 上部境界線
+    borderTopColor: 'red',
+    borderBottomWidth: 2, // デバッグ用: 下部境界線
+    borderBottomColor: 'red',
   },
   bottomBar: {
     height: bottomBarHeight,
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
+    borderTopWidth: 2, // デバッグ用: 上部境界線
+    borderTopColor: 'blue',
   },
   // アノテーション用のスタイル
   annotationOverlay: {
