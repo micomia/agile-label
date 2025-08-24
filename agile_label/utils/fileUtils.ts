@@ -161,34 +161,75 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       try {
         await FileSystem.downloadAsync(image.uri, fileUri);
         
-        // バウンディングボックス情報があれば、YOLO形式のラベルファイルを作成
+        // バウンディングボックス情報があれば、既存のYOLO形式ラベルファイルをコピー
         if (image.bboxes && image.bboxes.length > 0) {
           const labelFilename = `${image.label || 'unlabeled'}_${image.id}.txt`;
           const labelFileUri = labelsDir + labelFilename;
           
-          // YOLO形式のアノテーション文字列を作成
-          const yoloAnnotations = image.bboxes.map(bbox => {
-            // クラス名をクラス番号に変換
-            const classIndex = classList.indexOf(bbox.label || 'object');
-            const classNumber = classIndex >= 0 ? classIndex : 0;
-            
-            console.log(`[エクスポート] クラス変換: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, classList);
-            
-            // 画像の実際のサイズを取得（仮の値を使用）
-            const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
-            const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
-            
-            // 座標を正規化 (0-1の範囲)
-            const centerX = (bbox.x + bbox.width / 2) / imageWidth;
-            const centerY = (bbox.y + bbox.height / 2) / imageHeight;
-            const width = bbox.width / imageWidth;
-            const height = bbox.height / imageHeight;
-            
-            return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
-          }).join('\n');
+          // 既存のYOLO形式txtファイルを探す
+          const imageName = image.uri.split('/').pop();
+          const imageBaseName = imageName ? imageName.replace(/\.[^/.]+$/, '') : `image_${image.id}`;
+          const originalLabelFile = `${FileSystem.documentDirectory}datasets/${datasetId}/${imageBaseName}.txt`;
           
-          await FileSystem.writeAsStringAsync(labelFileUri, yoloAnnotations);
-          console.log(`[エクスポート] YOLO形式ラベルファイルを作成: ${labelFileUri}`);
+          console.log(`[エクスポート] 既存ラベルファイル検索: ${originalLabelFile}`);
+          
+          try {
+            const originalLabelInfo = await FileSystem.getInfoAsync(originalLabelFile);
+            if (originalLabelInfo.exists) {
+              // 既存のYOLO形式ファイルをそのままコピー（正しい座標が保存されている）
+              const yoloContent = await FileSystem.readAsStringAsync(originalLabelFile);
+              await FileSystem.writeAsStringAsync(labelFileUri, yoloContent);
+              console.log(`[エクスポート] 既存ラベルファイルをコピー: ${originalLabelFile} -> ${labelFileUri}`);
+              console.log(`[エクスポート] ラベル内容:\n${yoloContent}`);
+            } else {
+              console.warn(`[エクスポート] 既存ラベルファイルが見つかりません: ${originalLabelFile}`);
+              
+              // 既存ファイルが見つからない場合は、camera.tsxと同じロジックで新規作成
+              // ただし、実際の画像サイズが不明なので、標準サイズ（3024x4032）を仮定
+              const CAMERA_IMAGE_WIDTH = 3024;
+              const CAMERA_IMAGE_HEIGHT = 4032;
+              
+              // ImageGalleryの表示サイズ（adjustedCameraWidth/Height）を計算
+              const screenWidth = 393; // 仮の値 - 実際にはDimensions.get('window').widthを使用
+              const aspectRatio = 3 / 4;
+              const adjustedCameraWidth = screenWidth;
+              const adjustedCameraHeight = screenWidth / aspectRatio;
+              
+              const yoloAnnotations = image.bboxes.map(bbox => {
+                // クラス名をクラス番号に変換
+                const classIndex = classList.indexOf(bbox.label || 'object');
+                const classNumber = classIndex >= 0 ? classIndex : 0;
+                
+                // BBox座標は表示座標なので、実際の画像座標に変換してからYOLO形式に正規化
+                const scaleX = CAMERA_IMAGE_WIDTH / adjustedCameraWidth;
+                const scaleY = CAMERA_IMAGE_HEIGHT / adjustedCameraHeight;
+                
+                const actualX = bbox.x * scaleX;
+                const actualY = bbox.y * scaleY;
+                const actualWidth = bbox.width * scaleX;
+                const actualHeight = bbox.height * scaleY;
+                
+                // YOLO形式に正規化
+                const centerX = (actualX + actualWidth / 2) / CAMERA_IMAGE_WIDTH;
+                const centerY = (actualY + actualHeight / 2) / CAMERA_IMAGE_HEIGHT;
+                const width = actualWidth / CAMERA_IMAGE_WIDTH;
+                const height = actualHeight / CAMERA_IMAGE_HEIGHT;
+                
+                console.log(`[エクスポート-新規] BBox変換:`, {
+                  表示座標: { x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height },
+                  実際座標: { x: actualX, y: actualY, width: actualWidth, height: actualHeight },
+                  正規化: { centerX, centerY, width, height }
+                });
+                
+                return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+              }).join('\n');
+              
+              await FileSystem.writeAsStringAsync(labelFileUri, yoloAnnotations);
+              console.log(`[エクスポート] 新規ラベルファイルを作成: ${labelFileUri}`);
+            }
+          } catch (error) {
+            console.error(`[エクスポート] ラベルファイル処理エラー:`, error);
+          }
         }
       } catch (error) {
         console.error(`画像 ${image.id} のダウンロードに失敗:`, error);

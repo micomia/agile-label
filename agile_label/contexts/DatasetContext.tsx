@@ -380,31 +380,56 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
           console.log('classes.txt読み取りエラー:', classError);
         }
         
-        // 画像の実際のサイズを取得（アノテーション座標が保存されているのは表示サイズ基準のため）
-        // ここでは仮の値を使用。実際には画像ファイルから取得する必要があります
-        const imageWidth = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
-        const imageHeight = 1000; // 仮の値 - 実装時は実際の画像サイズを取得
-        
-        // YOLO形式のアノテーション文字列を作成
-        const yoloAnnotations = bboxes.map(bbox => {
-          // クラス名をクラス番号に変換
-          const classIndex = classList.indexOf(bbox.label || 'object');
-          const classNumber = classIndex >= 0 ? classIndex : 0;
+        // camera.tsxで既に正しいYOLO形式で保存されているため、再計算は不要
+        // ただし、BBox削除の場合は既存ファイルを更新する必要がある
+        if (bboxes.length === 0) {
+          // BBoxがすべて削除された場合は、ファイルを削除または空にする
+          await FileSystem.writeAsStringAsync(annotationPath, '');
+          console.log('アノテーションファイルを空にしました:', annotationPath);
+        } else {
+          // 実際の画像サイズ（3024x4032）を使用してYOLO形式に変換
+          const CAMERA_IMAGE_WIDTH = 3024;
+          const CAMERA_IMAGE_HEIGHT = 4032;
           
-          console.log(`[DatasetContext] クラス変換: "${bbox.label}" -> 番号: ${classNumber}, 利用可能クラス:`, classList);
+          // ImageGalleryの表示サイズを計算（camera.tsxと同じロジック）
+          const screenWidth = 393; // 仮の値
+          const aspectRatio = 3 / 4;
+          const adjustedCameraWidth = screenWidth;
+          const adjustedCameraHeight = screenWidth / aspectRatio;
           
-          // 座標を正規化 (0-1の範囲)
-          const centerX = (bbox.x + bbox.width / 2) / imageWidth;
-          const centerY = (bbox.y + bbox.height / 2) / imageHeight;
-          const width = bbox.width / imageWidth;
-          const height = bbox.height / imageHeight;
-          
-          return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
-        }).join('\n');
+          // YOLO形式のアノテーション文字列を作成
+          const yoloAnnotations = bboxes.map(bbox => {
+            // クラス名をクラス番号に変換
+            const classIndex = classList.indexOf(bbox.label || 'object');
+            const classNumber = classIndex >= 0 ? classIndex : 0;
+            
+            // BBox座標（表示座標）を実際の画像座標に変換してからYOLO形式に正規化
+            const scaleX = CAMERA_IMAGE_WIDTH / adjustedCameraWidth;
+            const scaleY = CAMERA_IMAGE_HEIGHT / adjustedCameraHeight;
+            
+            const actualX = bbox.x * scaleX;
+            const actualY = bbox.y * scaleY;
+            const actualWidth = bbox.width * scaleX;
+            const actualHeight = bbox.height * scaleY;
+            
+            // YOLO形式に正規化
+            const centerX = (actualX + actualWidth / 2) / CAMERA_IMAGE_WIDTH;
+            const centerY = (actualY + actualHeight / 2) / CAMERA_IMAGE_HEIGHT;
+            const width = actualWidth / CAMERA_IMAGE_WIDTH;
+            const height = actualHeight / CAMERA_IMAGE_HEIGHT;
+            
+            console.log(`[DatasetContext] BBox変換: "${bbox.label}" (${classNumber})`, {
+              表示座標: { x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height },
+              実際座標: { x: actualX, y: actualY, width: actualWidth, height: actualHeight },
+              正規化: { centerX, centerY, width, height }
+            });
+            
+            return `${classNumber} ${centerX.toFixed(6)} ${centerY.toFixed(6)} ${width.toFixed(6)} ${height.toFixed(6)}`;
+          }).join('\n');
 
-        await FileSystem.writeAsStringAsync(annotationPath, yoloAnnotations);
-        
-        console.log('YOLO形式アノテーションファイルを更新:', annotationPath);
+          await FileSystem.writeAsStringAsync(annotationPath, yoloAnnotations);
+          console.log('YOLO形式アノテーションファイルを更新:', annotationPath);
+        }
       }
     } catch (error) {
       console.error('アノテーションファイル更新エラー:', error);

@@ -252,20 +252,6 @@ export function ImageGallery({ images, onDeleteBbox }: ImageGalleryProps) {
                           return null;
                         })()}
                         
-                        {/* テスト用BBox - 常に左上に表示 */}
-                        <View
-                          style={{
-                            position: 'absolute',
-                            left: imageLayout.x + 10,
-                            top: imageLayout.y + 10,
-                            width: 50,
-                            height: 50,
-                            borderWidth: 2,
-                            borderColor: '#FF0000',
-                            backgroundColor: 'rgba(255, 0, 0, 0.3)',
-                          }}
-                        />
-                        
                         {item.bboxes.map((bbox: BBox) => {
                           const bboxColor = getClassColor(bbox.label || 'object');
                           const isSelected = selectedBboxId === bbox.id;
@@ -279,30 +265,23 @@ export function ImageGallery({ images, onDeleteBbox }: ImageGalleryProps) {
                           });
                           
                           // camera.tsxと同じ座標計算ロジック
-                          // camera.tsxではピクセルベースで直接使用しているため、同じアプローチを採用
-                          let scaledX = bbox.x;
-                          let scaledY = bbox.y;
-                          let scaledWidth = bbox.width;
-                          let scaledHeight = bbox.height;
+                          // camera.tsxで作成されたBBoxは、adjustedCameraWidth/Heightを基準にしているため
+                          // 現在の表示サイズに合わせてスケールする必要がある
+                          const cameraScaleX = imageLayout.width / adjustedCameraWidth;
+                          const cameraScaleY = imageLayout.height / adjustedCameraHeight;
                           
-                          // 座標が表示サイズに対する比率の場合、スケーリング
-                          if (bbox.x <= 1 && bbox.y <= 1 && bbox.width <= 1 && bbox.height <= 1) {
-                            // 比率ベース（0-1の範囲）
-                            scaledX = bbox.x * imageLayout.width;
-                            scaledY = bbox.y * imageLayout.height;
-                            scaledWidth = bbox.width * imageLayout.width;
-                            scaledHeight = bbox.height * imageLayout.height;
-                            
-                            console.log('比率ベースとして描画:', {
-                              originalBbox: bbox,
-                              scaledX, scaledY, scaledWidth, scaledHeight
-                            });
-                          } else {
-                            console.log('ピクセルベースとして描画:', {
-                              originalBbox: bbox,
-                              scaledX, scaledY, scaledWidth, scaledHeight
-                            });
-                          }
+                          let scaledX = bbox.x * cameraScaleX;
+                          let scaledY = bbox.y * cameraScaleY;
+                          let scaledWidth = bbox.width * cameraScaleX;
+                          let scaledHeight = bbox.height * cameraScaleY;
+                          
+                          console.log('BBox座標変換:', {
+                            originalBbox: bbox,
+                            cameraSize: { width: adjustedCameraWidth, height: adjustedCameraHeight },
+                            currentImageSize: { width: imageLayout.width, height: imageLayout.height },
+                            scale: { x: cameraScaleX, y: cameraScaleY },
+                            scaledCoords: { scaledX, scaledY, scaledWidth, scaledHeight }
+                          });
                           
                           return (
                             <View key={bbox.id} style={{ position: 'absolute' }}>
