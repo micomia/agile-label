@@ -12,8 +12,10 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です",
-        "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です"
-      }
+        "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "a"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +27,8 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.CAMERA"
-      ]
+      ],
+      "package": "com.watson404v.agile_label"
     },
     "web": {
       "bundler": "metro",
@@ -46,6 +49,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "163ab1cd-708b-452a-8f05-015a4ae6c098"
+      }
     }
   }
 }

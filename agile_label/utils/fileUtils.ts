@@ -1,8 +1,17 @@
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { ImageData } from '../contexts/DatasetContext';
+
+// react-native-zip-archiveをオプショナルでインポート
+let zip: ((source: string, target: string) => Promise<void>) | null = null;
+try {
+  const zipArchive = require('react-native-zip-archive');
+  zip = zipArchive.zip;
+} catch (error) {
+  console.log('[ZIP] react-native-zip-archiveは利用できません (Expo Go環境)');
+}
 
 // 単一の画像をダウンロードして保存する関数
 export async function saveImageToFiles(image: ImageData): Promise<boolean> {
@@ -159,7 +168,19 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       const fileUri = imgsDir + filename;
       
       try {
-        await FileSystem.downloadAsync(image.uri, fileUri);
+        // ローカルファイルの場合はcopyAsync、リモートURLの場合はdownloadAsyncを使用
+        if (image.uri.startsWith('file://') || image.uri.startsWith('/')) {
+          // ローカルファイルをコピー
+          await FileSystem.copyAsync({
+            from: image.uri,
+            to: fileUri,
+          });
+          console.log(`[エクスポート] ローカル画像をコピー: ${image.uri} -> ${fileUri}`);
+        } else {
+          // リモートURLからダウンロード
+          await FileSystem.downloadAsync(image.uri, fileUri);
+          console.log(`[エクスポート] リモート画像をダウンロード: ${image.uri} -> ${fileUri}`);
+        }
         
         // バウンディングボックス情報があれば、既存のYOLO形式ラベルファイルをコピー
         if (image.bboxes && image.bboxes.length > 0) {
@@ -169,18 +190,57 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
           // 既存のYOLO形式txtファイルを探す
           const imageName = image.uri.split('/').pop();
           const imageBaseName = imageName ? imageName.replace(/\.[^/.]+$/, '') : `image_${image.id}`;
-          const originalLabelFile = `${FileSystem.documentDirectory}datasets/${datasetId}/${imageBaseName}.txt`;
+          
+          // camera.tsxで保存される実際のファイル名パターンに合わせる
+          // 1. まず元のファイル名と同じ名前のtxtファイルを探す（photo_1234567890.txt）
+          let originalLabelFile = `${FileSystem.documentDirectory}datasets/${datasetId}/${imageBaseName}.txt`;
           
           console.log(`[エクスポート] 既存ラベルファイル検索: ${originalLabelFile}`);
           
           try {
-            const originalLabelInfo = await FileSystem.getInfoAsync(originalLabelFile);
+            let originalLabelInfo = await FileSystem.getInfoAsync(originalLabelFile);
+            let yoloContent = '';
+            
             if (originalLabelInfo.exists) {
               // 既存のYOLO形式ファイルをそのままコピー（正しい座標が保存されている）
-              const yoloContent = await FileSystem.readAsStringAsync(originalLabelFile);
-              await FileSystem.writeAsStringAsync(labelFileUri, yoloContent);
+              yoloContent = await FileSystem.readAsStringAsync(originalLabelFile);
               console.log(`[エクスポート] 既存ラベルファイルをコピー: ${originalLabelFile} -> ${labelFileUri}`);
               console.log(`[エクスポート] ラベル内容:\n${yoloContent}`);
+            } else {
+              // camera.tsxの実際の保存パターンに合わせて、データセットディレクトリ内のすべてのtxtファイルを確認
+              console.warn(`[エクスポート] 標準パターンでラベルファイルが見つかりません: ${originalLabelFile}`);
+              console.log(`[エクスポート] データセットディレクトリ内のtxtファイルを検索します...`);
+              
+              try {
+                const datasetDir = `${FileSystem.documentDirectory}datasets/${datasetId}/`;
+                const files = await FileSystem.readDirectoryAsync(datasetDir);
+                const txtFiles = files.filter(file => file.endsWith('.txt'));
+                
+                console.log(`[エクスポート] 見つかったtxtファイル:`, txtFiles);
+                
+                // 画像ファイル名に対応するtxtファイルを探す（camera.tsxではphoto_timestampパターンで保存）
+                // 例: photo_1234567890.jpg → photo_1234567890.txt
+                const correspondingTxtFile = txtFiles.find(txtFile => {
+                  const txtBaseName = txtFile.replace('.txt', '');
+                  return imageBaseName === txtBaseName;
+                });
+                
+                if (correspondingTxtFile) {
+                  const correspondingTxtPath = `${datasetDir}${correspondingTxtFile}`;
+                  console.log(`[エクスポート] 対応するtxtファイルを発見: ${correspondingTxtPath}`);
+                  yoloContent = await FileSystem.readAsStringAsync(correspondingTxtPath);
+                  console.log(`[エクスポート] 対応ラベルファイルをコピー: ${correspondingTxtPath} -> ${labelFileUri}`);
+                  console.log(`[エクスポート] ラベル内容:\n${yoloContent}`);
+                } else {
+                  console.warn(`[エクスポート] 対応するtxtファイルが見つかりません。画像: ${imageBaseName}, txtファイル:`, txtFiles);
+                }
+              } catch (dirError) {
+                console.error(`[エクスポート] ディレクトリ読み取りエラー:`, dirError);
+              }
+            }
+            
+            if (yoloContent) {
+              await FileSystem.writeAsStringAsync(labelFileUri, yoloContent);
             } else {
               console.warn(`[エクスポート] 既存ラベルファイルが見つかりません: ${originalLabelFile}`);
               
@@ -236,15 +296,59 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       }
     }
     
-    // シェア機能を使用（iOSではファイルアプリに保存可能）
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(tempDir, {
-        mimeType: 'application/zip',
-        dialogTitle: `${datasetName}を保存`
-      });
-      return true;
-    } else {
-      Alert.alert('エラー', 'この端末ではシェア機能を利用できません');
+    // ZIPファイルを作成してシェア
+    try {
+      const zipFileName = `${datasetName}_${Date.now()}.zip`;
+      const zipFilePath = FileSystem.documentDirectory + zipFileName;
+      
+      // ZIP機能が利用可能かチェック
+      if (zip) {
+        // react-native-zip-archiveを使用してZIPファイルを作成
+        await zip(tempDir, zipFilePath);
+        console.log(`ZIPファイルを作成: ${zipFilePath}`);
+        
+        // ZIPファイルを共有
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(zipFilePath, {
+            mimeType: 'application/zip',
+            dialogTitle: `${datasetName}.zip を保存`
+          });
+          
+          // 一時ファイルをクリーンアップ
+          await FileSystem.deleteAsync(tempDir, { idempotent: true });
+          await FileSystem.deleteAsync(zipFilePath, { idempotent: true });
+          
+          return true;
+        } else {
+          Alert.alert('エラー', 'この端末ではファイル共有機能を利用できません');
+          return false;
+        }
+      } else {
+        // ZIP機能が利用できない場合（Expo Go環境）
+        throw new Error('ZIP機能が利用できません (Expo Go環境)');
+      }
+    } catch (zipError) {
+      console.error('ZIP作成エラー:', zipError);
+      
+      // ZIP作成に失敗した場合、フォルダを直接共有（Expo Go環境の場合）
+      Alert.alert(
+        'ZIP作成不可',
+        'この環境ではZIPファイルの作成ができません。フォルダとして共有しますか？\n\n（注意: Development Buildを使用するとZIP機能が利用できます）',
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          {
+            text: 'フォルダで共有',
+            onPress: async () => {
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(tempDir, {
+                  mimeType: 'application/zip',
+                  dialogTitle: `${datasetName}フォルダを保存`
+                });
+              }
+            }
+          }
+        ]
+      );
       return false;
     }
   } catch (error) {
