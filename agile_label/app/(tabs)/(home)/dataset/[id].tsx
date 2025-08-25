@@ -10,7 +10,15 @@ import React from 'react';
 
 export default function DatasetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { datasets, loadDatasetImages, deleteBboxFromImage } = useDatasets();
+  const { 
+    datasets, 
+    loadDatasetImages, 
+    deleteBboxFromImage,
+    deleteImageFromDataset,
+    updateBboxInImage,
+    addBboxToImage,
+    updateImageBboxes
+  } = useDatasets();
   
   // IDに基づいてデータセットを取得
   const dataset = datasets.find(d => d.id === id);
@@ -27,17 +35,6 @@ export default function DatasetDetailScreen() {
 
   const handleCameraPress = () => {
     router.push(`/(tabs)/(home)/camera?datasetId=${id}` as any);
-  };
-
-  const handleDeleteBbox = async (imageId: string, bboxId: string) => {
-    if (!id) return;
-    
-    try {
-      await deleteBboxFromImage(id, imageId, bboxId);
-      Alert.alert('削除完了', 'バウンディングボックスが削除されました');
-    } catch (error) {
-      Alert.alert('エラー', 'バウンディングボックスの削除に失敗しました');
-    }
   };
 
   const handleSaveDataset = () => {
@@ -116,6 +113,89 @@ export default function DatasetDetailScreen() {
     );
   };
 
+  // ImageGallery用のコールバック関数
+  const handleDeleteBbox = (imageId: string, bboxId: string) => {
+    if (!id || !dataset) return;
+    
+    Alert.alert(
+      'BBox削除',
+      'このバウンディングボックスを削除しますか？',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel'
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteBboxFromImage(id, imageId, bboxId);
+            } catch (error) {
+              Alert.alert('エラー', 'バウンディングボックスの削除に失敗しました');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteImage = (imageId: string) => {
+    if (!id || !dataset) return;
+    
+    Alert.alert(
+      '画像削除',
+      'この画像を削除しますか？',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel'
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteImageFromDataset(id, imageId);
+            } catch (error) {
+              Alert.alert('エラー', '画像の削除に失敗しました');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleUpdateBbox = async (imageId: string, bboxId: string, updatedBbox: any) => {
+    if (!id || !dataset) return;
+    
+    try {
+      await updateBboxInImage(id, imageId, bboxId, updatedBbox);
+    } catch (error) {
+      Alert.alert('エラー', 'BBoxの更新に失敗しました');
+    }
+  };
+
+  const handleAddBbox = async (imageId: string, newBbox: any) => {
+    if (!id || !dataset) return;
+    
+    try {
+      await addBboxToImage(id, imageId, newBbox);
+    } catch (error) {
+      Alert.alert('エラー', 'BBoxの追加に失敗しました');
+    }
+  };
+
+  const handleUpdateImageBboxes = async (imageId: string, newBboxes: any[]) => {
+    if (!id || !dataset) return;
+    
+    try {
+      await updateImageBboxes(id, imageId, newBboxes);
+    } catch (error) {
+      Alert.alert('エラー', 'アノテーションの保存に失敗しました');
+    }
+  };
+
   if (!dataset) {
     return (
       <SafeAreaView style={styles.container}>
@@ -168,6 +248,10 @@ export default function DatasetDetailScreen() {
       <ImageGallery 
         images={dataset.images} 
         onDeleteBbox={handleDeleteBbox}
+        onDeleteImage={handleDeleteImage}
+        onUpdateBbox={handleUpdateBbox}
+        onAddBbox={handleAddBbox}
+        onUpdateImageBboxes={handleUpdateImageBboxes}
       />
       
       {/* カメラボタン */}

@@ -39,6 +39,10 @@ interface DatasetContextType {
   addImageToDataset: (datasetId: string, imageUri: string, bboxes?: BBox[]) => Promise<void>;
   loadDatasetImages: (datasetId: string) => Promise<void>;
   deleteBboxFromImage: (datasetId: string, imageId: string, bboxId: string) => Promise<void>;
+  deleteImageFromDataset: (datasetId: string, imageId: string) => Promise<void>;
+  updateBboxInImage: (datasetId: string, imageId: string, bboxId: string, updatedBbox: BBox) => Promise<void>;
+  addBboxToImage: (datasetId: string, imageId: string, newBbox: BBox) => Promise<void>;
+  updateImageBboxes: (datasetId: string, imageId: string, newBboxes: BBox[]) => Promise<void>;
 }
 
 // コンテキストの作成
@@ -436,6 +440,179 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // 画像削除機能
+  const deleteImageFromDataset = async (datasetId: string, imageId: string) => {
+    try {
+      console.log(`[DatasetContext] 画像削除開始: ${imageId}`);
+      
+      // データセットから画像を削除
+      setDatasets(prevDatasets => 
+        prevDatasets.map(dataset => {
+          if (dataset.id === datasetId) {
+            const updatedImages = dataset.images.filter(img => img.id !== imageId);
+            return {
+              ...dataset,
+              images: updatedImages,
+              imageCount: updatedImages.length
+            };
+          }
+          return dataset;
+        })
+      );
+      
+      // ファイルシステムからも削除
+      const targetImage = datasets.find(d => d.id === datasetId)?.images.find(img => img.id === imageId);
+      if (targetImage) {
+        // 画像ファイルを削除
+        const imageExists = await FileSystem.getInfoAsync(targetImage.uri);
+        if (imageExists.exists) {
+          await FileSystem.deleteAsync(targetImage.uri);
+          console.log('画像ファイル削除:', targetImage.uri);
+        }
+        
+        // アノテーションファイルを削除
+        const annotationPath = targetImage.uri.replace(/\.(jpg|jpeg|png)$/i, '.txt');
+        const annotationExists = await FileSystem.getInfoAsync(annotationPath);
+        if (annotationExists.exists) {
+          await FileSystem.deleteAsync(annotationPath);
+          console.log('アノテーションファイル削除:', annotationPath);
+        }
+      }
+      
+      console.log(`[DatasetContext] 画像削除完了: ${imageId}`);
+    } catch (error) {
+      console.error('画像削除エラー:', error);
+      throw error;
+    }
+  };
+
+  // BBox更新機能
+  const updateBboxInImage = async (datasetId: string, imageId: string, bboxId: string, updatedBbox: BBox) => {
+    try {
+      console.log(`[DatasetContext] BBox更新開始: ${bboxId}`, updatedBbox);
+      
+      // メモリ内のデータを更新
+      setDatasets(prevDatasets => 
+        prevDatasets.map(dataset => {
+          if (dataset.id === datasetId) {
+            const updatedImages = dataset.images.map(image => {
+              if (image.id === imageId) {
+                const updatedBboxes = (image.bboxes || []).map(bbox => 
+                  bbox.id === bboxId ? updatedBbox : bbox
+                );
+                return {
+                  ...image,
+                  bboxes: updatedBboxes
+                };
+              }
+              return image;
+            });
+            return {
+              ...dataset,
+              images: updatedImages
+            };
+          }
+          return dataset;
+        })
+      );
+      
+      // アノテーションファイルを更新
+      const updatedDataset = datasets.find(d => d.id === datasetId);
+      const updatedImage = updatedDataset?.images.find(img => img.id === imageId);
+      if (updatedImage) {
+        await updateAnnotationFile(updatedImage, updatedImage.bboxes || []);
+      }
+      
+      console.log(`[DatasetContext] BBox更新完了: ${bboxId}`);
+    } catch (error) {
+      console.error('BBox更新エラー:', error);
+      throw error;
+    }
+  };
+
+  // BBox追加機能
+  const addBboxToImage = async (datasetId: string, imageId: string, newBbox: BBox) => {
+    try {
+      console.log(`[DatasetContext] BBox追加開始: ${newBbox.id}`, newBbox);
+      
+      // メモリ内のデータを更新
+      setDatasets(prevDatasets => 
+        prevDatasets.map(dataset => {
+          if (dataset.id === datasetId) {
+            const updatedImages = dataset.images.map(image => {
+              if (image.id === imageId) {
+                const existingBboxes = image.bboxes || [];
+                return {
+                  ...image,
+                  bboxes: [...existingBboxes, newBbox]
+                };
+              }
+              return image;
+            });
+            return {
+              ...dataset,
+              images: updatedImages
+            };
+          }
+          return dataset;
+        })
+      );
+      
+      // アノテーションファイルを更新
+      const updatedDataset = datasets.find(d => d.id === datasetId);
+      const updatedImage = updatedDataset?.images.find(img => img.id === imageId);
+      if (updatedImage) {
+        await updateAnnotationFile(updatedImage, updatedImage.bboxes || []);
+      }
+      
+      console.log(`[DatasetContext] BBox追加完了: ${newBbox.id}`);
+    } catch (error) {
+      console.error('BBox追加エラー:', error);
+      throw error;
+    }
+  };
+
+  // 画像のBBoxes全体を更新する機能
+  const updateImageBboxes = async (datasetId: string, imageId: string, newBboxes: BBox[]) => {
+    try {
+      console.log(`[DatasetContext] 画像のBBoxes全体更新開始: ${imageId}`, newBboxes);
+      
+      // メモリ内のデータを更新
+      setDatasets(prevDatasets => 
+        prevDatasets.map(dataset => {
+          if (dataset.id === datasetId) {
+            const updatedImages = dataset.images.map(image => {
+              if (image.id === imageId) {
+                return {
+                  ...image,
+                  bboxes: newBboxes
+                };
+              }
+              return image;
+            });
+            return {
+              ...dataset,
+              images: updatedImages
+            };
+          }
+          return dataset;
+        })
+      );
+      
+      // アノテーションファイルを更新
+      const updatedDataset = datasets.find(d => d.id === datasetId);
+      const updatedImage = updatedDataset?.images.find(img => img.id === imageId);
+      if (updatedImage) {
+        await updateAnnotationFile(updatedImage, newBboxes);
+      }
+      
+      console.log(`[DatasetContext] 画像のBBoxes全体更新完了: ${imageId}`);
+    } catch (error) {
+      console.error('画像のBBoxes更新エラー:', error);
+      throw error;
+    }
+  };
+
   return (
     <DatasetContext.Provider value={{ 
       datasets, 
@@ -443,7 +620,11 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       deleteDataset, 
       addImageToDataset, 
       loadDatasetImages,
-      deleteBboxFromImage
+      deleteBboxFromImage,
+      deleteImageFromDataset,
+      updateBboxInImage,
+      addBboxToImage,
+      updateImageBboxes
     }}>
       {children}
     </DatasetContext.Provider>
