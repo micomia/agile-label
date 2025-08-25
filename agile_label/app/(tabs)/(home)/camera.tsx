@@ -89,7 +89,6 @@ export default function CameraScreen() {
   const [classes, setClasses] = useState<string[]>(['object', 'person', 'vehicle']); // デフォルトクラス
   const [selectedClass, setSelectedClass] = useState<string>('object');
   const [showClassModal, setShowClassModal] = useState(false);
-  const [newClassName, setNewClassName] = useState('');
   const [isClassesLoaded, setIsClassesLoaded] = useState(false); // クラス読み込み完了フラグ
   
   // 履歴管理の状態
@@ -775,54 +774,6 @@ export default function CameraScreen() {
     setHistory(prev => prev.slice(0, -1));
   }
 
-  // クラス追加
-  async function addClass() {
-    if (newClassName.trim() && !classes.includes(newClassName.trim())) {
-      const newClasses = [...classes, newClassName.trim()];
-      setClasses(newClasses);
-      setNewClassName('');
-      
-      console.log(`[カメラ] クラス追加: "${newClassName.trim()}"`, newClasses);
-      
-      // 即座にクラス情報を保存
-      await saveDatasetClassesWithArray(newClasses);
-    }
-  }
-
-  // クラス削除
-  async function deleteClass(className: string) {
-    if (classes.length > 1) { // 最低1つのクラスは残す
-      console.log(`[カメラ] クラス削除開始: "${className}", 現在のクラス:`, classes);
-      
-      const newClasses = classes.filter(c => c !== className);
-      console.log(`[カメラ] 削除後のクラス:`, newClasses);
-      
-      // 状態を更新
-      setClasses(newClasses);
-      
-      // 削除されたクラスが選択中だった場合、別のクラスを選択
-      let newSelectedClass = selectedClass;
-      if (selectedClass === className) {
-        newSelectedClass = newClasses[0];
-        setSelectedClass(newSelectedClass);
-        console.log(`[カメラ] 選択クラス変更: "${className}" -> "${newSelectedClass}"`);
-      }
-      
-      // 即座にクラス情報を保存
-      try {
-        await saveDatasetClassesWithArray(newClasses);
-        console.log(`[カメラ] クラス削除完了: "${className}"`);
-      } catch (error) {
-        console.error(`[カメラ] クラス削除保存エラー:`, error);
-        // エラーが発生した場合は状態を元に戻す
-        setClasses(classes);
-        setSelectedClass(selectedClass);
-      }
-    } else {
-      console.log(`[カメラ] クラス削除不可: 最低1つのクラスが必要`);
-    }
-  }
-
   // クラス選択時の処理
   function selectClass(className: string) {
     setSelectedClass(className);
@@ -1036,59 +987,33 @@ export default function CameraScreen() {
                 {classes.map((className) => {
                   const classColor = getClassColor(className, classes);
                   return (
-                    <View key={className} style={styles.classItem}>
-                      <TouchableOpacity
-                        style={[
-                          styles.classButton,
-                          selectedClass === className && styles.classButtonSelected,
-                          selectedClass === className && { backgroundColor: classColor }
-                        ]}
-                        onPress={() => selectClass(className)}
-                      >
-                        <View style={styles.classButtonContent}>
-                          <View 
-                            style={[
-                              styles.classColorIndicator,
-                              { backgroundColor: classColor }
-                            ]}
-                          />
-                          <Text style={[
-                            styles.classButtonText,
-                            selectedClass === className && styles.classButtonTextSelected
-                          ]}>
-                            {className}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      
-                      {classes.length > 1 && (
-                        <TouchableOpacity
-                          style={styles.deleteClassButton}
-                          onPress={() => deleteClass(className)}
-                        >
-                          <Ionicons name="trash" size={16} color="#FF6B6B" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <TouchableOpacity
+                      key={className}
+                      style={[
+                        styles.classButton,
+                        selectedClass === className && styles.classButtonSelected,
+                        selectedClass === className && { backgroundColor: classColor }
+                      ]}
+                      onPress={() => selectClass(className)}
+                    >
+                      <View style={styles.classButtonContent}>
+                        <View 
+                          style={[
+                            styles.classColorIndicator,
+                            { backgroundColor: classColor }
+                          ]}
+                        />
+                        <Text style={[
+                          styles.classButtonText,
+                          selectedClass === className && styles.classButtonTextSelected
+                        ]}>
+                          {className}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
-              
-              <View style={styles.addClassSection}>
-                <TextInput
-                  style={styles.classInput}
-                  placeholder="新しいクラス名"
-                  value={newClassName}
-                  onChangeText={setNewClassName}
-                  onSubmitEditing={addClass}
-                />
-                <TouchableOpacity
-                  style={styles.addClassButton}
-                  onPress={addClass}
-                >
-                  <Ionicons name="add" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
         </Modal>
@@ -1381,18 +1306,12 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     paddingHorizontal: 20,
   },
-  classItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
   classButton: {
-    flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     backgroundColor: '#F5F5F5',
-    marginRight: 8,
+    marginVertical: 4,
   },
   classButtonSelected: {
     backgroundColor: '#007AFF',
@@ -1411,33 +1330,6 @@ const styles = StyleSheet.create({
   classButtonTextSelected: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  deleteClassButton: {
-    padding: 8,
-  },
-  addClassSection: {
-    flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    gap: 10,
-  },
-  classInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D0D0D0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-  },
-  addClassButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   // 横並びボタン用のスタイル
   bottomButtonsContainer: {
