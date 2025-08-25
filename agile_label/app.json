@@ -12,8 +12,10 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です",
-        "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です"
-      }
+        "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "a"
     },
     "android": {
       "adaptiveIcon": {
