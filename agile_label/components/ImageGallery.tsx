@@ -29,6 +29,12 @@ interface ImageGalleryProps {
   onUpdateImageBboxes?: (imageId: string, newBboxes: BBox[]) => void; // 画像のBBoxes全体更新コールバック
 }
 
+interface HistoryAction {
+  type: 'add' | 'delete';
+  bbox: BBox;
+  timestamp: number;
+}
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const itemSize = screenWidth / 3; // 3列表示、間隔なし
 
@@ -97,6 +103,9 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
   const [selectedClass, setSelectedClass] = useState<string>('object');
   const [showClassModal, setShowClassModal] = useState(false);
   const [isClassesLoaded, setIsClassesLoaded] = useState(false);
+  
+  // 履歴管理（undo機能のため）
+  const [history, setHistory] = useState<HistoryAction[]>([]);
 
   // camera.tsxからのクラス管理機能を移植
   const loadDatasetClasses = async () => {
@@ -190,6 +199,8 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
       setEditingBboxes([...currentImage.bboxes || []]);
       setIsEditMode(true);
       setSelectedBboxId(null);
+      console.log('[ImageGallery] entering edit mode, resetting history');
+      setHistory([]); // 履歴をリセット
     }
   };
 
@@ -199,6 +210,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
       onUpdateImageBboxes(currentImage.id, editingBboxes);
       setIsEditMode(false);
       setSelectedBboxId(null);
+      setHistory([]); // 履歴もリセット
     }
   };
 
@@ -206,6 +218,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
     setIsEditMode(false);
     setSelectedBboxId(null);
     setEditingBboxes([]);
+    setHistory([]); // 履歴もリセット
   };
 
   // camera.tsxからのアノテーション編集ロジック
@@ -425,6 +438,18 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
         label: currentBbox.label,
       };
       
+      const addAction: HistoryAction = {
+        type: 'add',
+        bbox: normalizedBbox,
+        timestamp: Date.now(),
+      };
+      console.log('[ImageGallery] adding bbox to history:', addAction);
+      setHistory(prev => {
+        const newHistory = [...prev, addAction];
+        console.log('[ImageGallery] new history length after add:', newHistory.length);
+        return newHistory;
+      });
+      
       setEditingBboxes(prev => [...prev, normalizedBbox]);
       setSelectedBboxId(normalizedBbox.id);
     }
@@ -433,7 +458,55 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
     setIsDrawing(false);
   };
 
+  const undoLastAction = () => {
+    console.log('[ImageGallery] undoLastAction called, history length:', history.length);
+    if (history.length === 0) return;
+    
+    const lastAction = history[history.length - 1];
+    console.log('[ImageGallery] undoing action:', lastAction);
+    
+    if (lastAction.type === 'add') {
+      // 最後に追加されたBBoxを削除
+      console.log('[ImageGallery] undoing add action, removing bbox:', lastAction.bbox.id);
+      setEditingBboxes(prev => {
+        const newBboxes = prev.filter(bbox => bbox.id !== lastAction.bbox.id);
+        console.log('[ImageGallery] new bboxes after undo add:', newBboxes.length);
+        return newBboxes;
+      });
+    } else if (lastAction.type === 'delete') {
+      // 最後に削除されたBBoxを復元
+      console.log('[ImageGallery] undoing delete action, restoring bbox:', lastAction.bbox.id);
+      setEditingBboxes(prev => {
+        const newBboxes = [...prev, lastAction.bbox];
+        console.log('[ImageGallery] new bboxes after undo delete:', newBboxes.length);
+        return newBboxes;
+      });
+    }
+    
+    // 履歴から最後のアクションを削除
+    setHistory(prev => {
+      const newHistory = prev.slice(0, -1);
+      console.log('[ImageGallery] new history length after undo:', newHistory.length);
+      return newHistory;
+    });
+  };
+
   const deleteBboxFromEditing = (bboxId: string) => {
+    const bboxToDelete = editingBboxes.find(bbox => bbox.id === bboxId);
+    if (bboxToDelete) {
+      const deleteAction: HistoryAction = {
+        type: 'delete',
+        bbox: bboxToDelete,
+        timestamp: Date.now(),
+      };
+      console.log('[ImageGallery] adding delete action to history:', deleteAction);
+      setHistory(prev => {
+        const newHistory = [...prev, deleteAction];
+        console.log('[ImageGallery] new history length after delete:', newHistory.length);
+        return newHistory;
+      });
+    }
+    
     setEditingBboxes(prev => prev.filter(bbox => bbox.id !== bboxId));
     if (selectedBboxId === bboxId) {
       setSelectedBboxId(null);
@@ -595,35 +668,32 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                   {/* 上部の黒い帯 - camera.tsxと同じ構成 */}
                   <View style={styles.topBar}>
                     <View style={styles.header}>
-                      <TouchableOpacity 
-                        style={styles.headerButton} 
-                        onPress={() => {
-                          if (isEditMode) {
-                            handleCancelEdit();
-                          } else {
-                            setSelectedImageIndex(null);
-                          }
-                        }}
-                      >
-                        <Ionicons name={isEditMode ? "close" : "arrow-back"} size={24} color="white" />
-                      </TouchableOpacity>
-                      <Text style={styles.headerTitle}>
-                        {isEditMode ? 'アノテーション編集' : `${index + 1} / ${images.length}`}
-                      </Text>
-                      {!isEditMode ? (
-                        <TouchableOpacity
-                          style={styles.headerButton}
-                          onPress={() => handleSaveImage(item)}
-                        >
-                          <Ionicons name="download-outline" size={24} color="white" />
-                        </TouchableOpacity>
+                      {isEditMode ? (
+                        <>
+                          <TouchableOpacity style={styles.headerButton} onPress={handleCancelEdit}>
+                            <Ionicons name="close" size={24} color="white" />
+                          </TouchableOpacity>
+                          <Text style={styles.headerTitle}>アノテーション</Text>
+                          <View style={styles.headerButton} />
+                        </>
                       ) : (
-                        <TouchableOpacity
-                          style={styles.headerButton}
-                          onPress={handleSaveAnnotations}
-                        >
-                          <Ionicons name="checkmark" size={24} color="white" />
-                        </TouchableOpacity>
+                        <>
+                          <TouchableOpacity 
+                            style={styles.headerButton} 
+                            onPress={() => setSelectedImageIndex(null)}
+                          >
+                            <Ionicons name="arrow-back" size={24} color="white" />
+                          </TouchableOpacity>
+                          <Text style={styles.headerTitle}>
+                            {index + 1} / {images.length}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.headerButton}
+                            onPress={() => handleSaveImage(item)}
+                          >
+                            <Ionicons name="download-outline" size={24} color="white" />
+                          </TouchableOpacity>
+                        </>
                       )}
                     </View>
                   </View>
@@ -848,7 +918,20 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                   {/* 下部の黒い帯 - camera.tsxと同じ構成 */}
                   <View style={styles.bottomBar}>
                     {isEditMode ? (
+                      /* ボタンを横並びに配置 - camera.tsxと同じレイアウト */
                       <View style={styles.bottomButtonsContainer}>
+                        <TouchableOpacity 
+                          style={[styles.bottomButton, styles.undoButtonHorizontal, { opacity: history.length > 0 ? 1 : 0.5 }]} 
+                          onPress={() => {
+                            console.log('[ImageGallery] undo button pressed');
+                            undoLastAction();
+                          }}
+                          disabled={history.length === 0}
+                        >
+                          <Ionicons name="arrow-undo" size={24} color="white" />
+                          <Text style={styles.bottomButtonText}>戻す</Text>
+                        </TouchableOpacity>
+                        
                         <TouchableOpacity 
                           style={[styles.bottomButton, styles.classSelectorHorizontal, { backgroundColor: `${getClassColor(selectedClass)}CC` }]} 
                           onPress={() => setShowClassModal(true)}
@@ -865,15 +948,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                           onPress={handleSaveAnnotations}
                         >
                           <Ionicons name="checkmark" size={24} color="white" />
-                          <Text style={styles.bottomButtonText}>保存</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity
-                          style={[styles.bottomButton, styles.undoButtonHorizontal]}
-                          onPress={handleCancelEdit}
-                        >
-                          <Ionicons name="close" size={24} color="white" />
-                          <Text style={styles.bottomButtonText}>キャンセル</Text>
+                          <Text style={styles.bottomButtonText}>完了</Text>
                         </TouchableOpacity>
                       </View>
                     ) : (
@@ -885,6 +960,8 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                           <Ionicons name="create-outline" size={24} color="white" />
                           <Text style={styles.bottomButtonText}>編集</Text>
                         </TouchableOpacity>
+                        
+                        <View style={[styles.bottomButton]} />
                         
                         <TouchableOpacity
                           style={[styles.bottomButton, styles.deleteButtonHorizontal]}
@@ -1023,22 +1100,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  // camera.tsxと同じモーダルスタイル
-  modal: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  modalImageContainer: {
-    width: screenWidth,
-    flex: 1,
-  },
   // camera.tsxと同じレイアウトスタイル
   topBar: {
     height: topBarHeight,
     backgroundColor: 'black',
     justifyContent: 'flex-end',
-    borderBottomWidth: 2, // デバッグ用: 下部境界線
-    borderBottomColor: 'red',
   },
   header: {
     flexDirection: 'row',
@@ -1062,18 +1128,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
-    borderTopWidth: 2, // デバッグ用: 上部境界線
-    borderTopColor: 'red',
-    borderBottomWidth: 2, // デバッグ用: 下部境界線
-    borderBottomColor: 'red',
   },
   bottomBar: {
     height: bottomBarHeight,
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
-    borderTopWidth: 2, // デバッグ用: 上部境界線
-    borderTopColor: 'blue',
+  },
+  // camera.tsxと同じモーダルスタイル
+  modal: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  modalImageContainer: {
+    width: screenWidth,
+    flex: 1,
   },
   // アノテーション用のスタイル
   annotationOverlay: {
@@ -1143,7 +1212,7 @@ const styles = StyleSheet.create({
   // 横並びボタン用のスタイル
   bottomButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     width: '100%',
@@ -1170,15 +1239,16 @@ const styles = StyleSheet.create({
   },
   classSelectorHorizontal: {
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    flex: 1.5, // 他のボタンより1.5倍の幅
   },
   saveButtonHorizontal: {
-    backgroundColor: 'rgba(34, 139, 34, 0.8)',
+    backgroundColor: 'black',
   },
   editButtonHorizontal: {
-    backgroundColor: 'rgba(0, 122, 255, 0.8)',
+    backgroundColor: 'black',
   },
   deleteButtonHorizontal: {
-    backgroundColor: 'rgba(220, 20, 60, 0.8)',
+    backgroundColor: 'black',
   },
   classColorIndicator: {
     width: 12,
