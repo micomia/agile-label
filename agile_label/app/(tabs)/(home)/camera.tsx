@@ -11,13 +11,16 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { useDatasets, BBox } from '../../../contexts/DatasetContext';
+import { Colors } from '../../../constants/Colors';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 
 const { width, height } = Dimensions.get('window');
@@ -75,6 +78,7 @@ if (adjustedCameraHeight > cameraHeight) {
 export default function CameraScreen() {
   const { datasetId } = useLocalSearchParams<{ datasetId?: string }>();
   const { addImageToDataset } = useDatasets();
+  const navigation = useNavigation();
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -105,6 +109,40 @@ export default function CameraScreen() {
   const [saveMessage, setSaveMessage] = useState('');
   
   const cameraRef = useRef<CameraView>(null);
+
+  // ナビゲーションバーの非表示設定
+  useFocusEffect(
+    React.useCallback(() => {
+      // ステータスバーとタブバーの設定
+      if (Platform.OS === 'android') {
+        StatusBar.setHidden(true, 'slide');
+      }
+      
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({
+          tabBarStyle: { display: 'none' }
+        });
+      }
+      
+      return () => {
+        // 画面を離れる時にタブバーとステータスバーを再表示
+        if (Platform.OS === 'android') {
+          StatusBar.setHidden(false, 'slide');
+        }
+        
+        if (parent) {
+          // 元のタブバースタイルを復元
+          parent.setOptions({
+            tabBarStyle: {
+              backgroundColor: Colors.background,
+              paddingTop: Platform.OS === 'android' ? 8 : 0,
+            }
+          });
+        }
+      };
+    }, [navigation])
+  );
 
   // データセット固有のクラス情報を読み込み・保存
   useEffect(() => {
@@ -785,6 +823,7 @@ export default function CameraScreen() {
   if (capturedPhoto) {
     return (
       <GestureHandlerRootView style={styles.container}>
+        {Platform.OS === 'android' && <StatusBar hidden={true} />}
         {/* 上部の黒い帯 */}
         <View style={styles.topBar}>
           <View style={styles.header}>
@@ -1033,6 +1072,7 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
+      {Platform.OS === 'android' && <StatusBar hidden={true} />}
       {/* 上部の黒い帯 */}
       <View style={styles.topBar}>
         <View style={styles.header}>
@@ -1077,6 +1117,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    elevation: 1000, // Android用の elevation を追加
+    ...Platform.select({
+      android: {
+        height: Dimensions.get('window').height,
+        width: Dimensions.get('window').width,
+      },
+    }),
   },
   message: {
     textAlign: 'center',
