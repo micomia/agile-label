@@ -569,30 +569,10 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
 
   const handleDeleteBbox = (imageId: string, bboxId: string) => {
     if (isEditMode) {
-      // 編集モード中の場合
+      // 編集モード中の場合のみ削除処理を実行
       showDeleteBboxAlert(bboxId);
-    } else {
-      // 通常モードの場合
-      Alert.alert(
-        'BBox削除',
-        'このバウンディングボックスを削除しますか？',
-        [
-          {
-            text: 'キャンセル',
-            style: 'cancel'
-          },
-          {
-            text: '削除',
-            style: 'destructive',
-            onPress: () => {
-              if (onDeleteBbox) {
-                onDeleteBbox(imageId, bboxId);
-              }
-            }
-          }
-        ]
-      );
     }
+    // 編集モードでない場合は何もしない
   };
 
   const selectClass = (className: string) => {
@@ -798,7 +778,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                                   />
                                   
                                   {/* 選択時のリサイズハンドル */}
-                                  {isSelected && imageLayout && (
+                                  {isSelected && imageLayout && !editMode && !isDrawing && (
                                     <>
                                       <View style={[styles.resizeHandle, {
                                         left: imageLayout.x + bbox.x - 7,
@@ -922,10 +902,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                                     onPress={() => {
                                       setSelectedBboxId(selectedBboxId === bbox.id ? null : bbox.id);
                                     }}
-                                    onLongPress={() => {
-                                      handleDeleteBbox(item.id, bbox.id);
-                                    }}
-                                    delayLongPress={800}
+                                    onLongPress={undefined}
                                     activeOpacity={0.7}
                                   />
                                   
