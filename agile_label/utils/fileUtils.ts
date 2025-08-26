@@ -67,7 +67,7 @@ export async function saveMultipleImagesToFiles(images: ImageData[], datasetName
     // 各画像をダウンロード
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
-      const filename = `${datasetName}_${image.label || 'unlabeled'}_${image.id}_${Date.now()}.jpg`;
+      const filename = `${datasetName}_${image.id}_${Date.now()}.jpg`;
       const fileUri = FileSystem.documentDirectory + filename;
       
       try {
@@ -164,7 +164,7 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
     // 各画像をimgsフォルダにダウンロードし、対応するYOLO形式ラベルファイルを作成
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
-      const filename = `${image.label || 'unlabeled'}_${image.id}.jpg`;
+      const filename = `${image.id}.jpg`;
       const fileUri = imgsDir + filename;
       
       try {
@@ -184,7 +184,7 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
         
         // バウンディングボックス情報があれば、既存のYOLO形式ラベルファイルをコピー
         if (image.bboxes && image.bboxes.length > 0) {
-          const labelFilename = `${image.label || 'unlabeled'}_${image.id}.txt`;
+          const labelFilename = `${image.id}.txt`;
           const labelFileUri = labelsDir + labelFilename;
           
           // 既存のYOLO形式txtファイルを探す
