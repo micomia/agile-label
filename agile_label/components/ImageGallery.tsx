@@ -169,12 +169,12 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
     }
   };
 
-  // 編集モード開始時にクラス情報を読み込む
+  // 画像選択時または編集モード開始時にクラス情報を読み込む
   React.useEffect(() => {
-    if (isEditMode && !isClassesLoaded) {
+    if (selectedImageIndex !== null && !isClassesLoaded) {
       loadDatasetClasses();
     }
-  }, [isEditMode, selectedImageIndex]);
+  }, [selectedImageIndex, isClassesLoaded]);
 
   // 画像が変わったときにクラス情報をリセット
   React.useEffect(() => {
