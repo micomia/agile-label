@@ -27,42 +27,45 @@ export default function TermsScreen() {
         <View style={styles.spacer} />
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>第1条（適用）</Text>
           <Text style={styles.sectionText}>
-            本利用規約（以下「本規約」といいます）は、株式会社micomia（以下「当社」といいます）が提供するスマートフォンアプリケーション「Agile Label」（以下「本アプリ」といいます）の利用条件を定めるものです。本アプリをご利用になる場合には、本規約にご同意いただいたものとみなします。
+            この利用規約(以下、「本規約」といいます。)は、本サービス(本サイトを含むものとし、以下、特に両者を区別しません。)の利用条件を定めるものです。本規約は、本サービスを利用するすべてのユーザーに適用されます。
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>第2条（利用目的）</Text>
+          <Text style={styles.sectionTitle}>本規約への同意</Text>
           <Text style={styles.sectionText}>
-            本アプリは、機械学習用データセットの作成を支援することを目的として提供されています。利用者は、この目的に沿って本アプリを使用するものとします。
+            ユーザーは、本サービスを利用することによって、本規約に有効かつ取り消し不能な同意をしたものとみなされます。本規約に同意しないユーザーは、本サービスをご利用いただけません。
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>第3条（禁止事項）</Text>
+          <Text style={styles.sectionTitle}>未成年による利用</Text>
           <Text style={styles.sectionText}>
-            利用者は、本アプリの利用にあたり、以下の行為を行ってはなりません：
-          </Text>
-          <Text style={styles.listItem}>• 法令または公序良俗に違反する行為</Text>
-          <Text style={styles.listItem}>• 他者の著作権、肖像権、プライバシー権その他の権利を侵害する行為</Text>
-          <Text style={styles.listItem}>• 本アプリの運営を妨害する行為</Text>
-          <Text style={styles.listItem}>• 本アプリを商用目的で無断使用する行為</Text>
-          <Text style={styles.listItem}>• その他当社が不適切と判断する行為</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>第4条（知的財産権）</Text>
-          <Text style={styles.sectionText}>
-            本アプリに関する知的財産権は、当社または正当な権利者に帰属します。本規約に基づく本アプリの利用許諾は、本アプリに関する当社または正当な権利者の知的財産権の使用許諾を意味するものではありません。
+            ユーザーが未成年である場合には、法定代理人の同意を得た上で、本サービスを利用してください。本サービスのご利用にあたり必要となるスマートフォンその他デバイスについても、必ず法定代理人の同意を得た上でご使用下さい。{"\n"}
+            法定代理人の同意を得ずに本サービスのご利用を開始したユーザーが成年に達した場合、未成年者であった間の利用行為を追認したものとみなします。
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>第5条（免責事項）</Text>
+          <Text style={styles.sectionTitle}>コンテンツのご利用</Text>
           <Text style={styles.sectionText}>
-            当社は、本アプリの利用により利用者に生じた損害について、一切の責任を負いません。ただし、当社の故意または重大な過失による場合は、この限りではありません。
+            当社は、ユーザーに対し、本サービスが提供する文章、画像、動画、音声、音楽、ソフトウェア、プログラム、コードその他のコンテンツについて、本サービスの利用範囲内における私的な利用を許諾します。有償コンテンツについては、当社が定める利用料金の支払が完了した場合に、本サービスの利用範囲内における私的な利用を許諾します。これは、譲渡及び再許諾できない、非独占的な利用権です。この範囲を超えて本サービスが提供するコンテンツを利用することは一切禁止します。{"\n"}
+            理由の如何を問わず、ユーザーが本サービスを利用する権利を失った場合、本サービスの一切のコンテンツの利用ができなくなることを、ユーザーは予め承諾するものとします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>遅延損害金</Text>
+          <Text style={styles.sectionText}>
+            当社に対する金銭債務の支払を遅滞したユーザーは、当社に対し、年14.6％の割合による遅延損害金を支払うものとします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>広告の表示</Text>
+          <Text style={styles.sectionText}>
+            当社は、本サービスに当社または第三者の広告を掲載することができるものとします。
           </Text>
         </View>
 
@@ -74,16 +77,99 @@ export default function TermsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>第7条（規約の変更）</Text>
+          <Text style={styles.sectionTitle}>禁止事項</Text>
           <Text style={styles.sectionText}>
-            当社は、必要に応じて本規約を変更することができます。規約の変更は、本アプリ内での通知または当社ウェブサイトでの公表により効力を生じるものとします。
+            ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません。
           </Text>
+            <Text style={styles.listItem}>・法令、裁判所の判決、決定若しくは命令、又は法令上拘束力のある行政措置に違反する行為又はこれらを助長する行為</Text>
+            <Text style={styles.listItem}>・犯罪行為に関連する行為</Text>
+            <Text style={styles.listItem}>・当社や第三者の知的財産権を侵害する行為</Text>
+            <Text style={styles.listItem}>・当社や第三者の肖像権、プライバシー、名誉、その他の権利又は利益を侵害する行為</Text>
+            <Text style={styles.listItem}>・当社や第三者のサーバーまたはネットワークに過度の負担をかけたり、その正常な作動を妨害する行為</Text>
+            <Text style={styles.listItem}>・当社のサービスの運営を妨害するおそれのある行為</Text>
+            <Text style={styles.listItem}>・不正アクセスをし、またはこれを試みる行為</Text>
+            <Text style={styles.listItem}>・逆アセンブル、逆コンパイル、リバースエンジニアリング等によって本サービスのソースコードを解析する行為</Text>
+            <Text style={styles.listItem}>・本サービスに接続しているシステムに権限なく不正にアクセスし又は当社設備に蓄積された情報を不正に書き換え若しくは消去する行為</Text>
+            <Text style={styles.listItem}>・本サービスのウェブサイトやソフトウェアを複製、送信、譲渡、貸与又は改変する行為</Text>
+            <Text style={styles.listItem}>・本サービス上のアカウント又はコンテンツを第三者に有償で貸与、譲渡、売買等をする行為</Text>
+            <Text style={styles.listItem}>・本サービスによって得られた情報を商業的に利用する行為</Text>
+            <Text style={styles.listItem}>・当社が意図しない方法によって本サービスに関連して利益を得ることを目的とする行為</Text>
+            <Text style={styles.listItem}>・当社が許諾しない本サービス上での宣伝、広告、勧誘、または営業行為</Text>
+            <Text style={styles.listItem}>・他のユーザーに関する個人情報等を収集または蓄積する行為</Text>
+            <Text style={styles.listItem}>・違法、不正又は不当な目的を持って本サービスを利用する行為</Text>
+            <Text style={styles.listItem}>・本サービスの他のユーザーまたはその他の第三者に不利益、損害、不快感を与える行為</Text>
+            <Text style={styles.listItem}>・他のユーザーに成りすます行為</Text>
+            <Text style={styles.listItem}>・他のユーザーのアカウントを利用する行為</Text>
+            <Text style={styles.listItem}>・面識のない異性との出会いを目的とした行為</Text>
+            <Text style={styles.listItem}>・反社会的勢力に対して直接または間接に利益を供与する行為</Text>
+            <Text style={styles.listItem}>・公序良俗に違反する行為</Text>
+            <Text style={styles.listItem}>・歩行中、車両運転中、その他本サービスの利用が不適切な状況又は態様において本サービスを利用する行為</Text>
+            <Text style={styles.listItem}>・その他、当社が不適切と判断する行為</Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>第8条（準拠法・管轄裁判所）</Text>
           <Text style={styles.sectionText}>
             本規約は、日本法に準拠し、本規約に関する紛争については、当社の本店所在地を管轄する裁判所を専属的合意管轄とします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>換金行為の禁止 </Text>
+          <Text style={styles.sectionText}>
+            本サービス内で取得した一切のコンテンツまたは本仮想通貨については、手段の如何を問わず、以下の取引を一切禁止します。
+          </Text>
+            <Text style={styles.listItem}>・売買</Text>
+            <Text style={styles.listItem}>・金銭その他の対価を授受する形でのあらゆる譲渡、譲受、貸与、借用等</Text>
+            <Text style={styles.listItem}>・その他換金行為に該当すると当社が判断する一切の行為</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>反社会的勢力の排除 </Text>
+          <Text style={styles.sectionText}>
+            ユーザーは、次の各号のいずれか一にも該当しないことを表明し、かつ将来にわたっても該当しないことを表明し、保証するものとします。
+          </Text>
+            <Text style={styles.listItem}>・自ら（法人その他の団体にあっては、自らの役員を含みます。）が、暴力団、暴力団員、暴力団員でなくなった時から5年を経過しない者、暴力団準構成員、暴力団関係企業、総会屋、社会運動等標ぼうゴロまたは特殊知能暴力集団等その他これらに準じる者（以下総称して「暴力団員等」といいます。）であること</Text>
+            <Text style={styles.listItem}>・ユーザーが法人その他の団体の場合にあっては、暴力団員等が経営を支配していると認められる関係を有すること</Text>
+            <Text style={styles.listItem}>・ユーザーが法人その他の団体の場合にあっては、暴力団員等が経営に実質的に関与していると認められる関係を有すること</Text>
+            <Text style={styles.listItem}>・自らもしくは第三者の不正の利益を図る目的または第三者に損害を加える目的をもって取引を行うなど、暴力団員等を利用していると認められる関係を有すること</Text>
+            <Text style={styles.listItem}>・暴力団員等に対して資金等を提供し、または便宜を供与するなどの関与をしていると認められる関係を有すること</Text>
+            <Text style={styles.listItem}>・ユーザーが法人その他の団体の場合にあっては、自らの役員または自らの経営に実質的に関与している者が暴力団員等と社会的に非難されるべき関係を有すること</Text>
+          <Text style={styles.sectionText}>
+            ユーザーは、自らまたは第三者を利用して次の各号のいずれか一にでも該当する行為を行わないことを保証するものとします。
+          </Text>
+            <Text style={styles.listItem}>・暴力的な要求行為</Text>
+            <Text style={styles.listItem}>・法的な責任を超えた不当な要求行為</Text>
+            <Text style={styles.listItem}>・取引に関して、脅迫的な言動をし、または暴力を用いる行為</Text>
+            <Text style={styles.listItem}>・風説を流布し、偽計を用い、または威力を用いて、当社の信用を毀損し、または当社の業務を妨害する行為</Text>
+            <Text style={styles.listItem}>・その他前各号に準ずる行為</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionText}>
+            
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionText}>
+            
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionText}>
+            
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionText}>
+            
           </Text>
         </View>
 
