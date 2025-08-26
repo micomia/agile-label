@@ -186,7 +186,22 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
           onPress: () => {
             if (onDeleteImage) {
               onDeleteImage(imageId);
-              setSelectedImageIndex(null); // モーダルを閉じる
+              // 削除後の処理：他に画像がある場合は次の画像に移動、なければモーダルを閉じる
+              const remainingImages = images.filter(img => img.id !== imageId);
+              if (remainingImages.length === 0) {
+                setSelectedImageIndex(null); // 画像がすべて削除されたらモーダルを閉じる
+              } else if (selectedImageIndex !== null) {
+                // 現在の画像インデックスを調整
+                const currentImageId = images[selectedImageIndex]?.id;
+                if (currentImageId === imageId) {
+                  // 削除された画像が現在表示中の画像の場合
+                  if (selectedImageIndex >= remainingImages.length) {
+                    // 最後の画像が削除された場合は前の画像に移動
+                    setSelectedImageIndex(remainingImages.length - 1);
+                  }
+                  // それ以外の場合は現在のインデックスのまま（次の画像が表示される）
+                }
+              }
             }
           }
         }
@@ -747,11 +762,6 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                               handlePanEnd();
                             }
                           }}
-                          shouldCancelWhenOutside={false}
-                          minPointers={1}
-                          maxPointers={1}
-                          enableTrackpadTwoFingerGesture={false}
-                          activateAfterLongPress={0}
                         >
                           <View style={styles.annotationOverlay}>
                             {/* 編集中のBBox */}

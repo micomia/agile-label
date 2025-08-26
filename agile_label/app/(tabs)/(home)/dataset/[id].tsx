@@ -140,30 +140,14 @@ export default function DatasetDetailScreen() {
     );
   };
 
-  const handleDeleteImage = (imageId: string) => {
+  const handleDeleteImage = async (imageId: string) => {
     if (!id || !dataset) return;
     
-    Alert.alert(
-      '画像削除',
-      'この画像を削除しますか？',
-      [
-        {
-          text: 'キャンセル',
-          style: 'cancel'
-        },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteImageFromDataset(id, imageId);
-            } catch (error) {
-              Alert.alert('エラー', '画像の削除に失敗しました');
-            }
-          }
-        }
-      ]
-    );
+    try {
+      await deleteImageFromDataset(id, imageId);
+    } catch (error) {
+      Alert.alert('エラー', '画像の削除に失敗しました');
+    }
   };
 
   const handleUpdateBbox = async (imageId: string, bboxId: string, updatedBbox: any) => {
