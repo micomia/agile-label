@@ -92,6 +92,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
   const [isEditMode, setIsEditMode] = useState(false); // 編集モードかどうか
   const [editingBboxes, setEditingBboxes] = useState<BBox[]>([]); // 編集中のBBox配列
   const modalFlatListRef = useRef<FlatList>(null);
+  const panGestureRef = useRef(null);
   
   // アノテーション編集用の状態（camera.tsxから移植）
   const [isDrawing, setIsDrawing] = useState(false);
@@ -228,6 +229,8 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
     const { x, y } = event.nativeEvent;
     setInitialTouchPoint({ x, y });
     
+    console.log(`[ImageGallery] Pan start at (${x}, ${y}), edit mode: ${isEditMode}`);
+    
     // 選択されたBBoxがある場合の編集処理
     if (selectedBboxId) {
       const selectedBbox = editingBboxes.find(bbox => bbox.id === selectedBboxId);
@@ -239,26 +242,33 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
         const bboxRight = bboxLeft + selectedBbox.width;
         const bboxBottom = bboxTop + selectedBbox.height;
         
+        console.log(`[ImageGallery] Checking handles for selected bbox at (${bboxLeft}, ${bboxTop}, ${bboxRight}, ${bboxBottom})`);
+        
         // 各リサイズハンドルの領域チェック
         if (Math.abs(x - bboxLeft) <= handleSize && Math.abs(y - bboxTop) <= handleSize) {
           setEditMode('resize');
           setResizeHandle('topLeft');
+          console.log('[ImageGallery] Started resize mode: topLeft');
           return;
         } else if (Math.abs(x - bboxRight) <= handleSize && Math.abs(y - bboxTop) <= handleSize) {
           setEditMode('resize');
           setResizeHandle('topRight');
+          console.log('[ImageGallery] Started resize mode: topRight');
           return;
         } else if (Math.abs(x - bboxLeft) <= handleSize && Math.abs(y - bboxBottom) <= handleSize) {
           setEditMode('resize');
           setResizeHandle('bottomLeft');
+          console.log('[ImageGallery] Started resize mode: bottomLeft');
           return;
         } else if (Math.abs(x - bboxRight) <= handleSize && Math.abs(y - bboxBottom) <= handleSize) {
           setEditMode('resize');
           setResizeHandle('bottomRight');
+          console.log('[ImageGallery] Started resize mode: bottomRight');
           return;
         }
         // BBox内部の場合は移動の準備をする
         else if (x >= bboxLeft && x <= bboxRight && y >= bboxTop && y <= bboxBottom) {
+          console.log('[ImageGallery] Touch inside selected bbox, preparing for move');
           return;
         }
       }
@@ -275,9 +285,11 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
     });
     
     if (clickedBbox) {
+      console.log(`[ImageGallery] Clicked bbox: ${clickedBbox.id}`);
       setSelectedBboxId(clickedBbox.id);
       if (selectedBboxId === clickedBbox.id) {
         setEditMode('move');
+        console.log('[ImageGallery] Started move mode for double-selected bbox');
       }
       return;
     }
@@ -305,6 +317,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
         label: selectedClass,
       };
       
+      console.log(`[ImageGallery] Started drawing new bbox at (${relativeX}, ${relativeY})`);
       setCurrentBbox(newBbox);
       setIsDrawing(true);
     }
@@ -331,6 +344,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
           
           if (deltaX > 5 || deltaY > 5) {
             setEditMode('move');
+            console.log(`[ImageGallery] Started move mode after delta: ${deltaX}, ${deltaY}`);
           }
         }
       }
@@ -418,11 +432,13 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
   const handlePanEnd = () => {
     if (!isEditMode) return;
     
+    console.log(`[ImageGallery] Pan end - editMode: ${editMode}, isDrawing: ${isDrawing}`);
     setInitialTouchPoint(null);
     
     if (editMode) {
       setEditMode(null);
       setResizeHandle(null);
+      console.log('[ImageGallery] Ended edit mode');
       return;
     }
     
@@ -452,6 +468,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
       
       setEditingBboxes(prev => [...prev, normalizedBbox]);
       setSelectedBboxId(normalizedBbox.id);
+      console.log(`[ImageGallery] Created new bbox: ${normalizedBbox.id}`);
     }
     
     setCurrentBbox(null);
@@ -649,6 +666,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
               data={images}
               horizontal
               pagingEnabled
+              scrollEnabled={!isEditMode}
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item.id}
               initialScrollIndex={selectedImageIndex}
@@ -718,14 +736,22 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                         
                         {/* アノテーション編集用のオーバーレイ */}
                         <PanGestureHandler
+                          ref={panGestureRef}
                           onGestureEvent={handlePanMove}
                           onHandlerStateChange={(event) => {
-                            if (event.nativeEvent.state === 4) {
+                            const { state } = event.nativeEvent;
+                            console.log(`[ImageGallery] Gesture state changed: ${state}`);
+                            if (state === 4) { // BEGAN
                               handlePanStart(event);
-                            } else if (event.nativeEvent.state === 5) {
+                            } else if (state === 5) { // END
                               handlePanEnd();
                             }
                           }}
+                          shouldCancelWhenOutside={false}
+                          minPointers={1}
+                          maxPointers={1}
+                          enableTrackpadTwoFingerGesture={false}
+                          activateAfterLongPress={0}
                         >
                           <View style={styles.annotationOverlay}>
                             {/* 編集中のBBox */}
@@ -749,6 +775,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                                       }
                                     ]}
                                     onPress={() => {
+                                      console.log(`[ImageGallery] BBox ${bbox.id} pressed`);
                                       setSelectedBboxId(bbox.id);
                                       setEditMode(null);
                                     }}
@@ -756,7 +783,8 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                                       showDeleteBboxAlert(bbox.id);
                                     }}
                                     delayLongPress={800}
-                                    activeOpacity={0.7}
+                                    activeOpacity={0.6}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                   />
                                   
                                   {/* 選択時のリサイズハンドル */}
