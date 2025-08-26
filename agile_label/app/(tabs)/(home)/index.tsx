@@ -1,5 +1,5 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
-import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
+import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { router, useFocusEffect } from 'expo-router';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
@@ -126,6 +126,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    // Androidでのステータスバー対応
+    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     paddingHorizontal: 20,

@@ -144,6 +144,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    // Androidでのステータスバー対応
+    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     flexDirection: 'row',

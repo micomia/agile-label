@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 
@@ -118,6 +118,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    // Androidでのステータスバー対応
+    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     paddingHorizontal: 20,

@@ -22,10 +22,6 @@ export default function HomeStack() {
         options={{ 
           headerShown: false,
           presentation: 'fullScreenModal',
-          navigationBarHidden: true,
-          statusBarHidden: true,
-          gestureEnabled: false,
-          animationTypeForReplace: 'push',
         }} 
       />
     </Stack>
