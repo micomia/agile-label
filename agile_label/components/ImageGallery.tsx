@@ -69,12 +69,22 @@ const CLASS_COLORS: { [key: string]: string } = {
 // デフォルトカラー（新しいクラス用）
 const DEFAULT_COLORS = ['#FF9F43', '#10AC84', '#A55EEA', '#FD79A8', '#00B894', '#FDCB6E', '#6C5CE7', '#A29BFE'];
 
-// クラス名から色を取得する関数（camera.tsxから流用・改良）
-function getClassColor(className: string): string {
+// クラス名から色を取得する関数（camera.tsxと同じロジック）
+function getClassColor(className: string, allClasses?: string[]): string {
   if (CLASS_COLORS[className]) {
     return CLASS_COLORS[className];
   }
-  // 新しいクラスの場合、文字列のハッシュに基づいて色を決定
+  
+  // 新しいクラスの場合、インデックスに基づいて色を決定
+  if (allClasses) {
+    const index = allClasses.indexOf(className);
+    if (index >= 0) {
+      const colorIndex = index % DEFAULT_COLORS.length;
+      return DEFAULT_COLORS[colorIndex];
+    }
+  }
+  
+  // allClassesが提供されていない場合は、ハッシュベースで決定（後方互換性）
   let hash = 0;
   for (let i = 0; i < className.length; i++) {
     const char = className.charCodeAt(i);
@@ -746,7 +756,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                           <View style={styles.annotationOverlay}>
                             {/* 編集中のBBox */}
                             {editingBboxes.map((bbox) => {
-                              const bboxColor = getClassColor(bbox.label || 'object');
+                              const bboxColor = getClassColor(bbox.label || 'object', classes);
                               const isSelected = selectedBboxId === bbox.id;
                               return (
                                 <View key={bbox.id} style={{ position: 'absolute' }}>
@@ -840,8 +850,8 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                                         top: imageLayout.y + normalizedY,
                                         width: normalizedWidth,
                                         height: normalizedHeight,
-                                        borderColor: getClassColor(selectedClass),
-                                        backgroundColor: `${getClassColor(selectedClass)}30`,
+                                        borderColor: getClassColor(selectedClass, classes),
+                                        backgroundColor: `${getClassColor(selectedClass, classes)}30`,
                                         borderStyle: 'dashed',
                                         opacity: 0.8,
                                       }
@@ -873,7 +883,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                         {item.bboxes && item.bboxes.length > 0 && imageLayout && (
                           <View style={styles.annotationOverlay}>
                             {item.bboxes.map((bbox: BBox) => {
-                              const bboxColor = getClassColor(bbox.label || 'object');
+                              const bboxColor = getClassColor(bbox.label || 'object', classes);
                               const isSelected = selectedBboxId === bbox.id;
                               
                               const cameraScaleX = imageLayout.width / adjustedCameraWidth;
@@ -948,11 +958,11 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
-                          style={[styles.bottomButton, styles.classSelectorHorizontal, { backgroundColor: `${getClassColor(selectedClass)}CC` }]} 
+                          style={[styles.bottomButton, styles.classSelectorHorizontal, { backgroundColor: `${getClassColor(selectedClass, classes)}CC` }]} 
                           onPress={() => setShowClassModal(true)}
                         >
                           <View style={styles.classButtonContent}>
-                            <View style={[styles.classColorIndicator, { backgroundColor: getClassColor(selectedClass) }]} />
+                            <View style={[styles.classColorIndicator, { backgroundColor: getClassColor(selectedClass, classes) }]} />
                             <Ionicons name="chevron-up" size={16} color="white" />
                           </View>
                           <Text style={styles.bottomButtonText}>{selectedClass}</Text>
@@ -1012,7 +1022,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
               
               <ScrollView style={styles.classList}>
                 {classes.map((className) => {
-                  const classColor = getClassColor(className);
+                  const classColor = getClassColor(className, classes);
                   return (
                     <TouchableOpacity
                       key={className}
