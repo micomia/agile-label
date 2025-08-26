@@ -14,6 +14,18 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
           }} 
         />
+        <Stack.Screen 
+          name="terms" 
+          options={{ 
+            headerShown: false, // カスタムヘッダーを使用するため非表示
+          }} 
+        />
+        <Stack.Screen 
+          name="privacy" 
+          options={{ 
+            headerShown: false, // カスタムヘッダーを使用するため非表示
+          }} 
+        />
       </Stack>
     </DatasetProvider>
   );

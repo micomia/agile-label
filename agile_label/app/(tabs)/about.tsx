@@ -1,8 +1,11 @@
 import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 
 export default function AboutScreen() {
+  const router = useRouter();
+
   const handleLinkPress = (url: string, title: string) => {
     Alert.alert(
       title,
@@ -28,11 +31,7 @@ export default function AboutScreen() {
   };
 
   const handlePrivacyPress = () => {
-    Alert.alert(
-      'プライバシーポリシー',
-      'このアプリは以下の権限を使用します:\n\n• カメラ: 写真撮影のため\n• フォトライブラリ: 撮影した画像の保存のため\n\n撮影された画像はデバイス内にのみ保存され、外部に送信されることはありません。ユーザーのプライバシーを最優先に考慮して設計されています。',
-      [{ text: 'OK' }]
-    );
+    router.push('../privacy' as any);
   };
 
   const handleLicensePress = () => {
@@ -41,6 +40,10 @@ export default function AboutScreen() {
       'このアプリは以下のオープンソースライブラリを使用しています:\n\n• React Native (MIT License)\n• Expo SDK (MIT License)\n• Expo Camera (MIT License)\n• Expo Router (MIT License)\n• TypeScript (Apache License 2.0)\n• React (MIT License)\n\nこれらのライブラリの詳細なライセンス情報については、各プロジェクトの公式サイトをご確認ください。',
       [{ text: 'OK' }]
     );
+  };
+
+  const handleTermsPress = () => {
+    router.push('../terms' as any);
   };
 
   return (
@@ -82,6 +85,14 @@ export default function AboutScreen() {
             <View style={styles.menuItemLeft}>
               <Ionicons name="shield-checkmark-outline" size={24} color={Colors.text} />
               <Text style={styles.menuItemText}>プライバシーポリシー</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleTermsPress}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="document-outline" size={24} color={Colors.text} />
+              <Text style={styles.menuItemText}>利用規約</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
