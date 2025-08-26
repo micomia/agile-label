@@ -19,6 +19,8 @@ import * as FileSystem from 'expo-file-system';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { useDatasets, BBox } from '../../../contexts/DatasetContext';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
+import { Colors } from '../../../constants/Colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,6 +77,7 @@ if (adjustedCameraHeight > cameraHeight) {
 export default function CameraScreen() {
   const { datasetId } = useLocalSearchParams<{ datasetId?: string }>();
   const { addImageToDataset } = useDatasets();
+  const navigation = useNavigation();
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -118,6 +121,31 @@ export default function CameraScreen() {
         loadDatasetClasses();
       }
     }, [datasetId])
+  );
+
+  // タブバーを隠す処理
+  useFocusEffect(
+    React.useCallback(() => {
+      // カメラ画面フォーカス時にタブバーを隠す
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({
+          tabBarStyle: { display: 'none' }
+        });
+      }
+
+      return () => {
+        // カメラ画面を離れる時にタブバーを復元
+        if (parent) {
+          parent.setOptions({
+            tabBarStyle: { 
+              backgroundColor: Colors.background, // 正しい背景色を使用
+              display: 'flex'
+            }
+          });
+        }
+      };
+    }, [navigation])
   );
 
   async function loadDatasetClasses() {
@@ -1077,6 +1105,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
   },
   message: {
     textAlign: 'center',
