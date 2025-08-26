@@ -11,6 +11,18 @@ export default function CreateScreen() {
   const [classNames, setClassNames] = useState('');
   const { addDataset } = useDatasets();
 
+  // 英数字とアンダースコアのみを許可する関数
+  const validateDatasetName = (text: string) => {
+    // 英数字とアンダースコアのみ許可
+    return text.replace(/[^a-zA-Z0-9_]/g, '');
+  };
+
+  // クラス名用のバリデーション（英数字、アンダースコア、カンマ、改行、スペースを許可）
+  const validateClassNames = (text: string) => {
+    // 英数字、アンダースコア、カンマ、改行、スペースのみ許可
+    return text.replace(/[^a-zA-Z0-9_,\n\s]/g, '');
+  };
+
   const handleClose = () => {
     router.back();
   };
@@ -67,10 +79,18 @@ export default function CreateScreen() {
           <TextInput
             style={styles.input}
             value={datasetName}
-            onChangeText={setDatasetName}
+            onChangeText={(text) => setDatasetName(validateDatasetName(text))}
             placeholder="birds_dataset"
             placeholderTextColor={Colors.text + '80'}
             maxLength={50}
+            keyboardType={Platform.OS === 'android' ? 'email-address' : 'ascii-capable'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="username"
+            importantForAutofill="no"
+            passwordRules=""
+            inputMode="text"
           />
           <Text style={styles.characterCount}>{datasetName.length}/50</Text>
         </View>
@@ -96,15 +116,22 @@ export default function CreateScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>クラス名</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { textAlignVertical: 'top' }]}
             value={classNames}
-            onChangeText={setClassNames}
-            placeholder="duck, swan, penguin&#10;（改行またはカンマ区切りで複数のクラスを入力）"
+            onChangeText={(text) => setClassNames(validateClassNames(text))}
+            placeholder="duck, swan, penguin"
             placeholderTextColor={Colors.text + '80'}
             multiline
             numberOfLines={3}
             maxLength={300}
-            textAlignVertical="top"
+            keyboardType={Platform.OS === 'android' ? 'email-address' : 'ascii-capable'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            textContentType="username"
+            importantForAutofill="no"
+            passwordRules=""
+            inputMode="text"
           />
           <Text style={styles.characterCount}>{classNames.length}/300</Text>
         </View>
@@ -113,7 +140,7 @@ export default function CreateScreen() {
         <View style={styles.noteContainer}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.primary} />
           <Text style={styles.noteText}>
-            クラス名入力は改行区切りにも対応しています。
+            データセット名とクラス名は半角英数字のみ使用できます。クラス名は改行区切りまたはカンマ区切りで複数入力可能です。
           </Text>
         </View>
       </ScrollView>
@@ -244,6 +271,12 @@ const styles = StyleSheet.create({
     color: Colors.text + '60',
     textAlign: 'right',
     marginTop: 4,
+  },
+  helpText: {
+    fontSize: 11,
+    color: Colors.text + '50',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   noteContainer: {
     flexDirection: 'row',
