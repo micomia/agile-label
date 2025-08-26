@@ -1,4 +1,6 @@
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/Colors';
@@ -6,19 +8,23 @@ import { Colors } from '../../constants/Colors';
 
 export default function TabLayout() {
   return (
-    <Tabs
-    screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        headerStyle: {
-        backgroundColor: Colors.background,
-        },
-        headerShadowVisible: false,
-        headerTintColor: Colors.text,
-        tabBarStyle: {
-        backgroundColor: Colors.background,
-        },
-    }}
-    >
+    <>
+      <StatusBar style="dark" backgroundColor={Colors.background} />
+      <Tabs
+      screenOptions={{
+          tabBarActiveTintColor: Colors.primary,
+          headerStyle: {
+          backgroundColor: Colors.background,
+          },
+          headerShadowVisible: false,
+          headerTintColor: Colors.text,
+          tabBarStyle: {
+          backgroundColor: Colors.background,
+          // Androidでのステータスバーとの重なりを防ぐ
+          paddingTop: Platform.OS === 'android' ? 8 : 0,
+          },
+      }}
+      >
       <Tabs.Screen
         name="(home)"
         options={{
@@ -40,5 +46,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </>
   );
 }
