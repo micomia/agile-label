@@ -188,6 +188,14 @@ const styles = StyleSheet.create({
   },
   createButtonDisabled: {
     backgroundColor: Colors.text + '30',
+    shadowColor: 'transparent', // Android/iOS共通で影を無効化
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0, // Android用の影を無効化
   },
   createButtonTextDisabled: {
     color: Colors.text + '60',
