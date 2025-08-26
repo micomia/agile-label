@@ -778,7 +778,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                                   />
                                   
                                   {/* 選択時のリサイズハンドル */}
-                                  {isSelected && imageLayout && (
+                                  {isSelected && imageLayout && !editMode && !isDrawing && (
                                     <>
                                       <View style={[styles.resizeHandle, {
                                         left: imageLayout.x + bbox.x - 7,
