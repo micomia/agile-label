@@ -27,7 +27,7 @@ export default function TermsScreen() {
         <View style={styles.spacer} />
 
         <View style={styles.section}>
-          <Text style={styles.sectionText}>
+          <Text style={styles.sectionOnlyText}>
             この利用規約(以下、「本規約」といいます。)は、本サービス(本サイトを含むものとし、以下、特に両者を区別しません。)の利用条件を定めるものです。本規約は、本サービスを利用するすべてのユーザーに適用されます。
           </Text>
         </View>
@@ -146,39 +146,116 @@ export default function TermsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionTitle}>利用制限</Text>
           <Text style={styles.sectionText}>
-            
+            当社は、ユーザーが以下のいずれかに該当する場合には、事前の通知なく、ユーザーに対して、本サービスの全部もしくは一部の利用を制限し、またはユーザーとしての登録を抹消することができるものとします。当社は、本条に基づき当社が行った行為によりユーザーに生じた損害について、一切の責任を負いません。
+          </Text>
+            <Text style={styles.listItem}>・本規約のいずれかの条項に違反した場合</Text>
+            <Text style={styles.listItem}>・登録事項に虚偽の事実があることが判明した場合</Text>
+            <Text style={styles.listItem}>・金銭債務の不履行があった場合</Text>
+            <Text style={styles.listItem}>・当社からの連絡に対し、相当の期間が経過しても返答がない場合</Text>
+            <Text style={styles.listItem}>・最終のご利用日から相当期間、本サービスのご利用がない場合</Text>
+            <Text style={styles.listItem}>・反社会的勢力等であるか、反社会的勢力等との何らかの交流若しくは関与を行っていると当社が判断した場合</Text>
+            <Text style={styles.listItem}>・その他、当社が本サービスの利用を適当でないと判断した場合</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>本サービスの提供の停止</Text>
+          <Text style={styles.sectionText}>
+            当社は、以下のいずれかの事由があると判断した場合、ユーザーに事前に通知することなく本サービスの全部または一部の提供を停止または中断することができるものとします。当社は、この場合にユーザーまたは第三者が被ったいかなる不利益または損害についても、一切の責任を負わないものとします。
+          </Text>
+            <Text style={styles.listItem}>・本サービスにかかるコンピュータシステムの保守点検または更新を行う場合</Text>
+            <Text style={styles.listItem}>・地震、落雷、火災、停電、天災またはウィルスの蔓延などの不可抗力により、本サービスの提供が困難となった場合</Text>
+            <Text style={styles.listItem}>・コンピュータまたは通信回線等が事故により停止した場合</Text>
+            <Text style={styles.listItem}>・その他、当社が本サービスの提供が困難と判断した場合</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>保証の否認</Text>
+          <Text style={styles.sectionText}>
+            当社は、本サービスや本サービスが提供するコンテンツに、システムバグや第三者の権利侵害が含まれないことを保証するものではありません。また、安全性、信頼性、正確性、完全性、有効性、特定の目的への適合性を保証するものでもありません。
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionTitle}>免責</Text>
           <Text style={styles.sectionText}>
-            
+            当社は、本サービスに関してユーザーに生じたあらゆる損害について一切の責任を負いません。ただし、本サービスに関する当社とユーザーとの間の契約（本規約を含みます。）が消費者契約法に定める消費者契約となる場合、この免責規定は適用されません。{"\n"}
+            消費者契約に該当する場合であっても、当社は、当社の過失（重過失を除きます。）によってユーザーに生じた損害のうち、ユーザーに直接かつ現実に発生した損害についてのみ賠償責任を負うものとし、また、その賠償額は、本サービスの利用料金の直近1ヶ月分または金1万円のいずれか低い方を上限とします。
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionTitle}>サービス内容の変更</Text>
           <Text style={styles.sectionText}>
-            
+            当社は、ユーザーに通知することなく、本サービスの内容を変更したり、本サービスの提供を中止、終了することができるものとします。ユーザーは、本サービスが終了した場合、有料コンテンツを利用する一切の権利を失い、以後、当該有料コンテンツを利用できなくなることについて、あらかじめ、異議なく同意するものとします。当社は、これらによってユーザーに生じた損害について一切の責任を負いません。
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}></Text>
+          <Text style={styles.sectionTitle}>利用規約の変更</Text>
           <Text style={styles.sectionText}>
-            
+            当社は、ユーザーに通知することなく、いつでも本規約を変更することができるものとします。変更後の本規約は、当社ウェブサイトに掲示された時点から効力を生じるものとします。本規約の変更後、本サービスの利用を継続したユーザーは、変更後の本規約に同意したものとみなします。
           </Text>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.companyInfo}>
-            株式会社micomia{'\n'}
-            © 2025 micomia Co., Ltd. All rights reserved.
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>個人情報の取扱い</Text>
+          <Text style={styles.sectionText}>
+            本サービスの利用によって取得するユーザーの個人情報については、当社のプライバシーポリシーに従い適切に取り扱うものとします。
           </Text>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>通知または連絡</Text>
+          <Text style={styles.sectionText}>
+            ユーザーと当社との間の通知または連絡は、当社の定める方法によって行うものとします。当社は、ユーザーから、当社が別途定める方式に従った変更届け出がない限り、現在登録されている連絡先が有効なものとみなして当該連絡先へ通知または連絡を行い、これらは、発信時にユーザーへ到達したものとみなします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>権利義務の譲渡</Text>
+          <Text style={styles.sectionText}>
+            ユーザーは、当社の書面による事前の承諾なく、利用契約上の地位または本規約に基づく権利もしくは義務を第三者に譲渡し、または担保に供することはできません。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>事業譲渡</Text>
+          <Text style={styles.sectionText}>
+            当社は本サービスにかかる事業を他社に事業譲渡（事業譲渡、会社分割その他事業が移転するあらゆる場合を含みます。）した場合には、当該事業譲渡に伴い利用契約上の地位、本規約に基づく権利及び義務並びにユーザーの情報を当該事業譲渡の譲受人に譲渡することができるものとします。ユーザーは、かかる譲渡につき予め同意したものとみなします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>適用関係</Text>
+          <Text style={styles.sectionText}>
+            本規約は、ユーザーと当社との間の本サービスの利用に関わる一切の関係に適用されるものとします。{"\n"}
+            当社は本サービスに関し、本規約のほか、ご利用にあたってのルールを定めることがあります。これらのルールは、その名称のいかんに関わらず、本規約の一部を構成するものとします。本規約がこれらのルールと矛盾する場合には、これらのルールが優先して適用されるものとします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>分離可能性</Text>
+          <Text style={styles.sectionText}>
+            本規約のいずれかの条項又はその一部が無効又は執行不能と判断された場合であっても、当該判断は他の部分に影響を及ぼさず、本規約の残りの部分は、引き続き有効かつ執行力を有するものとします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>準拠法・裁判管轄</Text>
+          <Text style={styles.sectionText}>
+            本規約の解釈にあたっては、日本法を準拠法とします。
+            本サービスに関して紛争が生じた場合には、当社の本店所在地を管轄する地方裁判所を専属的合意管轄とします。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionOnlyText}>
+            2025年08月26日 制定
+          </Text>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -236,12 +313,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
   },
-  lastUpdated: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -253,7 +325,14 @@ const styles = StyleSheet.create({
     color: Colors.text,
     lineHeight: 22,
     textAlign: 'justify',
+    marginBottom: 18,
   },
+    sectionOnlyText: {
+        fontSize: 14,
+        color: Colors.text,
+        lineHeight: 22,
+        textAlign: 'justify',
+    },
   listItem: {
     fontSize: 14,
     color: Colors.text,
@@ -261,17 +340,5 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     marginBottom: 4,
   },
-  footer: {
-    marginTop: 32,
-    marginBottom: 40,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  companyInfo: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+
 });
