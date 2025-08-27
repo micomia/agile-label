@@ -110,12 +110,12 @@ export async function saveMultipleImagesToFiles(images: ImageData[], datasetName
 export async function createAndShareDatasetZip(images: ImageData[], datasetName: string, datasetId?: string): Promise<boolean> {
   try {
     const tempDir = FileSystem.documentDirectory + `${datasetName}_${Date.now()}/`;
-    const imgsDir = tempDir + 'imgs/';
+    const imagesDir = tempDir + 'images/';
     const labelsDir = tempDir + 'labels/';
     
     // ディレクトリ構造を作成
     await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true });
-    await FileSystem.makeDirectoryAsync(imgsDir, { intermediates: true });
+    await FileSystem.makeDirectoryAsync(imagesDir, { intermediates: true });
     await FileSystem.makeDirectoryAsync(labelsDir, { intermediates: true });
     
     // classes.txtファイルを作成（共有用の一時フォルダ内）
@@ -161,11 +161,11 @@ export async function createAndShareDatasetZip(images: ImageData[], datasetName:
       console.error('共有用classes.txtの作成エラー:', error);
     }
     
-    // 各画像をimgsフォルダにダウンロードし、対応するYOLO形式ラベルファイルを作成
+    // 各画像をimagesフォルダにダウンロードし、対応するYOLO形式ラベルファイルを作成
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       const filename = `${image.id}.jpg`;
-      const fileUri = imgsDir + filename;
+      const fileUri = imagesDir + filename;
       
       try {
         // ローカルファイルの場合はcopyAsync、リモートURLの場合はdownloadAsyncを使用
