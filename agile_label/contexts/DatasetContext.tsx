@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // BBoxの型定義
 export interface BBox {
@@ -34,6 +35,7 @@ export interface Dataset {
 // コンテキストの型定義
 interface DatasetContextType {
   datasets: Dataset[];
+  isLoading: boolean;
   addDataset: (name: string, description: string, classNames?: string) => Promise<void>;
   deleteDataset: (id: string) => Promise<void>;
   addImageToDataset: (datasetId: string, imageUri: string, bboxes?: BBox[]) => Promise<void>;
@@ -51,9 +53,70 @@ const DatasetContext = createContext<DatasetContextType | undefined>(undefined);
 // プロバイダーコンポーネント
 export function DatasetProvider({ children }: { children: ReactNode }) {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // 読み込み済みデータセットを追跡
   const [loadedDatasets, setLoadedDatasets] = useState<Set<string>>(new Set());
+
+  // AsyncStorageのキー
+  const DATASETS_STORAGE_KEY = 'agile_label_datasets';
+
+  // 初期化時にデータを読み込み
+  useEffect(() => {
+    loadDatasetsFromStorage();
+  }, []);
+
+  // AsyncStorageからデータセット情報を読み込む
+  const loadDatasetsFromStorage = async () => {
+    try {
+      setIsLoading(true);
+      const storedData = await AsyncStorage.getItem(DATASETS_STORAGE_KEY);
+      
+      if (storedData) {
+        const parsedDatasets: Dataset[] = JSON.parse(storedData);
+        
+        // Date オブジェクトを復元
+        const datasetsWithDates = parsedDatasets.map(dataset => ({
+          ...dataset,
+          createdAt: new Date(dataset.createdAt),
+          images: dataset.images.map(image => ({
+            ...image,
+            createdAt: new Date(image.createdAt)
+          }))
+        }));
+        
+        setDatasets(datasetsWithDates);
+        console.log(`[データ復元] ${datasetsWithDates.length}個のデータセットを復元しました`);
+      } else {
+        console.log('[データ復元] 保存されたデータが見つかりません');
+      }
+    } catch (error) {
+      console.error('データセット読み込みエラー:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // AsyncStorageにデータセット情報を保存する
+  const saveDatasetsToStorage = async (updatedDatasets: Dataset[]) => {
+    try {
+      const dataToStore = JSON.stringify(updatedDatasets);
+      await AsyncStorage.setItem(DATASETS_STORAGE_KEY, dataToStore);
+      console.log(`[データ保存] ${updatedDatasets.length}個のデータセットを保存しました`);
+    } catch (error) {
+      console.error('データセット保存エラー:', error);
+    }
+  };
+
+  // データセット更新時に自動的に保存する関数
+  const updateDatasetsWithPersistence = (updateFunction: (prev: Dataset[]) => Dataset[]) => {
+    setDatasets(prev => {
+      const updated = updateFunction(prev);
+      // 非同期で保存
+      saveDatasetsToStorage(updated);
+      return updated;
+    });
+  };
 
   // classes.txtファイルからクラス数を読み取って更新する関数
   const updateLabelCountFromClassesFile = async (datasetId: string) => {
@@ -180,10 +243,9 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       console.error('データセットフォルダの作成エラー:', error);
     }
 
-    setDatasets(prev => [newDataset, ...prev]); // 新しいデータセットを最初に追加
-  };
-
-  const deleteDataset = async (id: string) => {
+    // 永続化機能を使ってデータセットを追加
+    updateDatasetsWithPersistence(prev => [newDataset, ...prev]);
+  };  const deleteDataset = async (id: string) => {
     // データセットのディレクトリを削除
     try {
       const datasetDir = `${FileSystem.documentDirectory}datasets/${id}/`;
@@ -197,8 +259,9 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       console.error('データセットフォルダの削除エラー:', error);
     }
 
-    setDatasets(prev => prev.filter(dataset => dataset.id !== id));
-    
+    // 永続化機能を使ってデータセットを削除
+    updateDatasetsWithPersistence(prev => prev.filter(dataset => dataset.id !== id));
+
     // 読み込み済みリストからも削除
     setLoadedDatasets(prev => {
       const newSet = new Set(prev);
@@ -224,7 +287,8 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     
     const actualClassCount = await updateClassesFile(datasetId, allLabels);
     
-    setDatasets(prev => prev.map(dataset => {
+    // 永続化機能を使ってデータセットを更新
+    updateDatasetsWithPersistence(prev => prev.map(dataset => {
       if (dataset.id === datasetId) {
         const updatedImages = [...dataset.images, newImage];
         
@@ -280,7 +344,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
           };
         });
 
-        setDatasets(prev => prev.map(dataset => {
+        updateDatasetsWithPersistence(prev => prev.map(dataset => {
           if (dataset.id === datasetId) {
             // 既存の画像とファイルシステムの画像をマージ
             const existingUrls = new Set(dataset.images.map(img => img.uri));
@@ -301,7 +365,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
             
             // 非同期処理のため、setDatasetsの外で実行してからsetDatasetsを呼ぶ
             updateClassesFile(datasetId, allLabels).then(actualClassCount => {
-              setDatasets(prevDatasets => prevDatasets.map(prevDataset => {
+              updateDatasetsWithPersistence(prevDatasets => prevDatasets.map(prevDataset => {
                 if (prevDataset.id === datasetId) {
                   return {
                     ...prevDataset,
@@ -332,7 +396,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
 
   const deleteBboxFromImage = async (datasetId: string, imageId: string, bboxId: string) => {
     try {
-      setDatasets(prev => prev.map(dataset => {
+      updateDatasetsWithPersistence(prev => prev.map(dataset => {
         if (dataset.id === datasetId) {
           const updatedImages = dataset.images.map(image => {
             if (image.id === imageId && image.bboxes) {
@@ -445,8 +509,8 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     try {
       console.log(`[DatasetContext] 画像削除開始: ${imageId}`);
       
-      // データセットから画像を削除
-      setDatasets(prevDatasets => 
+      // 永続化機能を使ってデータセットから画像を削除
+      updateDatasetsWithPersistence(prevDatasets => 
         prevDatasets.map(dataset => {
           if (dataset.id === datasetId) {
             const updatedImages = dataset.images.filter(img => img.id !== imageId);
@@ -492,7 +556,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       console.log(`[DatasetContext] BBox更新開始: ${bboxId}`, updatedBbox);
       
       // メモリ内のデータを更新
-      setDatasets(prevDatasets => 
+      updateDatasetsWithPersistence(prevDatasets => 
         prevDatasets.map(dataset => {
           if (dataset.id === datasetId) {
             const updatedImages = dataset.images.map(image => {
@@ -536,7 +600,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       console.log(`[DatasetContext] BBox追加開始: ${newBbox.id}`, newBbox);
       
       // メモリ内のデータを更新
-      setDatasets(prevDatasets => 
+      updateDatasetsWithPersistence(prevDatasets => 
         prevDatasets.map(dataset => {
           if (dataset.id === datasetId) {
             const updatedImages = dataset.images.map(image => {
@@ -578,7 +642,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       console.log(`[DatasetContext] 画像のBBoxes全体更新開始: ${imageId}`, newBboxes);
       
       // メモリ内のデータを更新
-      setDatasets(prevDatasets => 
+      updateDatasetsWithPersistence(prevDatasets => 
         prevDatasets.map(dataset => {
           if (dataset.id === datasetId) {
             const updatedImages = dataset.images.map(image => {
@@ -615,7 +679,8 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
 
   return (
     <DatasetContext.Provider value={{ 
-      datasets, 
+      datasets,
+      isLoading,
       addDataset, 
       deleteDataset, 
       addImageToDataset, 

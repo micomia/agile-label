@@ -1,5 +1,5 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
-import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform } from 'react-native';
+import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { router, useFocusEffect } from 'expo-router';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
@@ -9,7 +9,7 @@ import { createAndShareDatasetZip } from '../../../utils/fileUtils';
 import React from 'react';
 
 export default function Index() {
-  const { datasets, deleteDataset, loadDatasetImages } = useDatasets();
+  const { datasets, isLoading, deleteDataset, loadDatasetImages } = useDatasets();
 
   // フォーカス時にデータセットの画像を読み込む
   useFocusEffect(
@@ -99,7 +99,12 @@ export default function Index() {
       </View>
       
       {/* メインコンテンツエリア */}
-      {datasets.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>データを読み込み中...</Text>
+        </View>
+      ) : datasets.length === 0 ? (
         <View style={styles.emptyContent}>
           <Ionicons name="folder-outline" size={48} color={Colors.text + '40'} />
           <Text style={styles.emptyText}>データセットがありません</Text>
@@ -153,6 +158,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 40,
     marginTop: -60, // ヘッダー分を考慮して少し上に移動
+  },
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    marginTop: -60, // ヘッダー分を考慮して少し上に移動
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.text + '80',
+    marginTop: 16,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 18,

@@ -15,7 +15,7 @@
         "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "a"
+      "bundleIdentifier": "com.micomia.agilelabel"
     },
     "android": {
       "adaptiveIcon": {
@@ -44,6 +44,19 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 31,
+            "targetSdkVersion": 31,
+            "buildToolsVersion": "31.0.0"
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
         }
       ]
     ],
