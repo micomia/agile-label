@@ -148,14 +148,6 @@ export default function PrivacyScreen() {
 
         </View>
 
-        
-
-        <View style={styles.footer}>
-          <Text style={styles.companyInfo}>
-            株式会社micomia{'\n'}
-            © 2025 micomia Co., Ltd. All rights reserved.
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
