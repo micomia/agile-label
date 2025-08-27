@@ -79,7 +79,7 @@ export default function PrivacyScreen() {
           <Text style={styles.sectionText}>
             当社は、お客様のアクセス解析のために、「Googleアナリティクス」を利用しています。Googleアナリティクスは、トラフィックデータの収集のためにCookieを使用しています。トラフィックデータは匿名で収集されており、個人を特定するものではありません。Cookieを無効にすれば、これらの情報の収集を拒否することができます。詳しくはお使いのブラウザの設定をご確認ください。Googleアナリティクスについて、詳しくは以下からご確認ください。
           </Text>
-          <Text style={[styles.sectionText, styles.bold]}>
+          <Text style={styles.sectionText}>
             https://marketingplatform.google.com/about/analytics/terms/jp/
           </Text>
         </View>
@@ -92,13 +92,13 @@ export default function PrivacyScreen() {
           <Text style={styles.sectionText}>
             お客様は、以下のGoogleアカウントの広告設定ページから、パーソナライズ広告を無効にできます。
           </Text>
-          <Text style={[styles.sectionText, styles.bold]}>
+          <Text style={styles.sectionText}>
             https://adssettings.google.com/u/0/authenticated
           </Text>
           <Text style={styles.sectionText}>
             また aboutads.info のページにアクセスし、パーソナライズ広告掲載に使用される第三者配信事業者のCookieを無効にすることもできます。その他、GoogleによるCookieの取り扱い詳細については、以下のGoogleのポリシーと規約のページをご覧ください。
           </Text>
-          <Text style={[styles.sectionText, styles.bold]}>
+          <Text style={styles.sectionText}>
             https://policies.google.com/technologies/ads
           </Text>
         </View>
@@ -115,7 +115,7 @@ export default function PrivacyScreen() {
           <Text style={styles.sectionText}>
             お客様の情報の開示、情報の訂正、利用停止、削除をご希望の場合は、以下のメールアドレスにご連絡ください。
           </Text>
-          <Text style={[styles.sectionText, styles.bold]}>
+          <Text style={styles.sectionText}>
             support@agilelabel.com
           </Text>
           <Text style={styles.sectionText}>
