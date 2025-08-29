@@ -201,12 +201,12 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
     // データセット用のディレクトリ構造を作成
     try {
       const datasetDir = `${FileSystem.documentDirectory}datasets/${newDataset.id}/`;
-      const imgsDir = `${datasetDir}imgs/`;
+      const imagesDir = `${datasetDir}images/`;
       const labelsDir = `${datasetDir}labels/`;
       
-      // メインディレクトリと、imgs、labelsフォルダを作成
+      // メインディレクトリと、images、labelsフォルダを作成
       await FileSystem.makeDirectoryAsync(datasetDir, { intermediates: true });
-      await FileSystem.makeDirectoryAsync(imgsDir, { intermediates: true });
+      await FileSystem.makeDirectoryAsync(imagesDir, { intermediates: true });
       await FileSystem.makeDirectoryAsync(labelsDir, { intermediates: true });
       
       // クラス名を処理してclasses.txtファイルを作成
@@ -234,7 +234,7 @@ export function DatasetProvider({ children }: { children: ReactNode }) {
       
       console.log(`データセット ${newDataset.id} のフォルダ構造を作成しました:`, {
         datasetDir,
-        imgsDir,
+        imagesDir,
         labelsDir,
         classesFile: classesFilePath,
         classCount: newDataset.labelCount

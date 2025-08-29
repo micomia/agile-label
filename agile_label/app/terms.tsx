@@ -95,7 +95,7 @@ export default function TermsScreen() {
                     <Text style={styles.listItem}>・本サービスによって得られた情報を商業的に利用する行為</Text>
                     <Text style={styles.listItem}>・当社が意図しない方法によって本サービスに関連して利益を得ることを目的とする行為</Text>
                     <Text style={styles.listItem}>・当社が許諾しない本サービス上での宣伝、広告、勧誘、または営業行為</Text>
-                    <Text style={styles.listItem}>・他のユーザーに関する個人情報等を収集または蓄積する行為</Text>
+                    <Text style={styles.listItem_re}>・他のユーザーに関する個人情報等を収集または蓄積する行為</Text>
                     <Text style={styles.listItem}>・違法、不正又は不当な目的を持って本サービスを利用する行為</Text>
                     <Text style={styles.listItem}>・本サービスの他のユーザーまたはその他の第三者に不利益、損害、不快感を与える行為</Text>
                     <Text style={styles.listItem}>・他のユーザーに成りすます行為</Text>
@@ -321,6 +321,13 @@ const styles = StyleSheet.create({
     },
 
     listItem: {
+        fontSize: 14,
+        color: Colors.text,
+        lineHeight: 22,
+        marginLeft: 8,
+        marginBottom: 4,
+    },
+    listItem_re: {
         fontSize: 14,
         color: Colors.text,
         lineHeight: 22,
