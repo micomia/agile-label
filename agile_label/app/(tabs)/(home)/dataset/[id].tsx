@@ -164,6 +164,8 @@ export default function DatasetDetailScreen() {
         onPress={handleCameraPress}
         iconLibrary="Ionicons"
         ioniconsName="camera"
+        showText={true}
+        text="camera"
       />
     </SafeAreaView>
   );
