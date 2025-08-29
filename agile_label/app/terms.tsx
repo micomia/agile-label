@@ -70,13 +70,6 @@ export default function TermsScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>第6条（プライバシー）</Text>
-                    <Text style={styles.sectionText}>
-                        当社は、利用者のプライバシーを尊重し、個人情報の取扱いについては、別途定めるプライバシーポリシーに従います。本アプリで撮影された画像データは、利用者のデバイス内にのみ保存され、当社のサーバーに送信されることはありません。
-                    </Text>
-                </View>
-
-                <View style={styles.section}>
                     <Text style={styles.sectionTitle}>禁止事項</Text>
                     <Text style={styles.sectionText}>
                         ユーザーは、本サービスの利用にあたり、以下の行為をしてはなりません。
