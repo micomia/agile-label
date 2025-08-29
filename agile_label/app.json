@@ -10,6 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "2",
       "infoPlist": {
         "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です",
         "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です",
@@ -55,7 +56,7 @@
             "buildToolsVersion": "31.0.0"
           },
           "ios": {
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "16.0"
           }
         }
       ]

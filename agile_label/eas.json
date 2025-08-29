@@ -1,8 +1,10 @@
 {
   "build": {
     "preview": {
-      "developmentClient": true,
       "distribution": "store",
+      "ios": {
+        "simulator": false
+      }
     }
   },
   "submit": {
