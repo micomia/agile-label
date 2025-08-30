@@ -45,7 +45,7 @@ export default function Index() {
 
   const handleShareDataset = async (dataset: Dataset) => {
     if (dataset.images.length === 0) {
-      Alert.alert('エラー', '保存する画像がありません');
+      Alert.alert('保存できません', '画像が1枚もないため、データセットを保存できません。');
       return;
     }
 

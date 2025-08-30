@@ -333,8 +333,7 @@ export default function CameraScreen() {
           setHistory([]); // 履歴をリセット
         }
       } catch (error) {
-        console.error('写真撮影エラー:', error);
-        Alert.alert('エラー', '写真の撮影に失敗しました');
+        // エラー時の処理（ログ出力なし、連続撮影を阻害しないため）
       }
     }
   }
