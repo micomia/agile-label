@@ -1,13 +1,10 @@
 {
   "build": {
     "preview": {
-      "distribution": "store",
-      "ios": {
-        "simulator": false
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
       }
     }
-  },
-  "submit": {
-    "preview": {}
   }
 }
