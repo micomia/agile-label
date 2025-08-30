@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
+import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -58,7 +58,10 @@ export default function AboutScreen() {
         {/* アプリ情報セクション */}
         <View style={styles.section}>
           <View style={styles.appInfo}>
-            <Ionicons name="camera" size={60} color={Colors.tint} />
+            <Image 
+              source={require('../../assets/images/icon_agilelabel.png')} 
+              style={styles.appIcon}
+            />
             <Text style={styles.appName}>Agile Label</Text>
             <Text style={styles.appDescription}>
               機械学習用データセット作成アプリ
@@ -220,5 +223,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
+  },
+  appIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 8, // 角を少し丸くする
   },
 });
