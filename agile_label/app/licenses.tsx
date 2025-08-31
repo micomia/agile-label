@@ -216,12 +216,13 @@ For the full license text, please refer to the project repository.`;
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { zIndex: 1000 }]}>
+        {/* カスタムヘッダー（ギャラリー画面と同じスタイル） */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>ライセンス情報</Text>
+          <Text style={styles.headerTitle}>ライセンス</Text>
           <View style={styles.rightSpacer} />
         </View>
         <View style={styles.loadingContainer}>
@@ -235,15 +236,15 @@ For the full license text, please refer to the project repository.`;
   const totalPackages = Object.keys(licenses).length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* カスタムヘッダー（プライバシーポリシーと同じスタイル） */}
+    <SafeAreaView style={[styles.container, { zIndex: 1000 }]}>
+      {/* カスタムヘッダー（ギャラリー画面と同じスタイル） */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>ライセンス情報</Text>
-        <View style={styles.rightSpacer} />
-      </View>
+            <Ionicons name="chevron-back" size={24} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>ライセンス</Text>
+          <View style={styles.rightSpacer} />
+        </View>
 
       {/* メインコンテンツエリア */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -330,6 +331,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     // Androidでのステータスバー対応
     paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
@@ -537,6 +543,11 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: Colors.background,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalHeader: {
     flexDirection: 'row',

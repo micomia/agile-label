@@ -26,6 +26,12 @@ export default function RootLayout() {
             headerShown: false, // カスタムヘッダーを使用するため非表示
           }} 
         />
+        <Stack.Screen 
+          name="licenses" 
+          options={{ 
+            headerShown: false, // カスタムヘッダーを使用するため非表示
+          }} 
+        />
       </Stack>
     </DatasetProvider>
   );
