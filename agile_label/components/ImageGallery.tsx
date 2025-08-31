@@ -18,7 +18,6 @@ import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-
 import * as FileSystem from 'expo-file-system';
 import { Colors } from '../constants/Colors';
 import { ImageData, BBox } from '../contexts/DatasetContext';
-import { saveImageToFiles } from '../utils/fileUtils';
 
 interface ImageGalleryProps {
   images: ImageData[];
@@ -555,28 +554,6 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
     }
   };
 
-  const handleSaveImage = async (image: ImageData) => {
-    Alert.alert(
-      '画像を保存',
-      'この画像をフォトライブラリに保存しますか？',
-      [
-        {
-          text: 'キャンセル',
-          style: 'cancel'
-        },
-        {
-          text: '保存',
-          onPress: async () => {
-            const success = await saveImageToFiles(image);
-            if (success) {
-              Alert.alert('保存完了', '画像がフォトライブラリに保存されました');
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const handleDeleteBbox = (imageId: string, bboxId: string) => {
     if (isEditMode) {
       // 編集モード中の場合のみ削除処理を実行
@@ -710,12 +687,7 @@ export function ImageGallery({ images, onDeleteBbox, onDeleteImage, onUpdateBbox
                           <Text style={styles.headerTitle}>
                             {index + 1} / {images.length}
                           </Text>
-                          <TouchableOpacity
-                            style={styles.headerButton}
-                            onPress={() => handleSaveImage(item)}
-                          >
-                            <Ionicons name="download-outline" size={24} color="white" />
-                          </TouchableOpacity>
+                          <View style={styles.headerButton} />
                         </>
                       )}
                     </View>
