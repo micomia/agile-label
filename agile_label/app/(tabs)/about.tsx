@@ -35,11 +35,7 @@ export default function AboutScreen() {
   };
 
   const handleLicensePress = () => {
-    Alert.alert(
-      'ライセンス情報',
-      'このアプリは以下のオープンソースライブラリを使用しています:\n\n• React Native (MIT License)\n• Expo SDK (MIT License)\n• Expo Camera (MIT License)\n• Expo Router (MIT License)\n• TypeScript (Apache License 2.0)\n• React (MIT License)\n\nこれらのライブラリの詳細なライセンス情報については、各プロジェクトの公式サイトをご確認ください。',
-      [{ text: 'OK' }]
-    );
+    router.push('../licenses' as any);
   };
 
   const handleTermsPress = () => {
