@@ -22,14 +22,6 @@ export default function AboutScreen() {
     );
   };
 
-  const handleHelpPress = () => {
-    Alert.alert(
-      'ヘルプ',
-      'Agile Labelは機械学習用のデータセット作成をサポートするカメラアプリです。\n\n主な機能:\n• 高解像度写真撮影（3024×4032）\n• ラベル付けワークフロー\n• データセット管理\n\nご質問やサポートが必要な場合は、開発者にお問い合わせください。',
-      [{ text: 'OK' }]
-    );
-  };
-
   const handlePrivacyPress = () => {
     router.push('../privacy' as any);
   };
@@ -40,6 +32,10 @@ export default function AboutScreen() {
 
   const handleTermsPress = () => {
     router.push('../terms' as any);
+  };
+
+  const handleHelpPress = () => {
+    router.push('../help' as any);
   };
 
   return (
