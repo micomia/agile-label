@@ -13,10 +13,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "2",
+      "buildNumber": "5",
       "infoPlist": {
-        "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です",
-        "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です",
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleAllowMixedLocalizations": true,
+        "NSPhotoLibraryAddUsageDescription": "Allow saving images to your photo library",
+        "NSCameraUsageDescription": "Allow taking photos to add to datasets",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.micomia.agilelabel"
@@ -62,10 +64,14 @@
             "deploymentTarget": "16.0"
           }
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "ja": "./i18n/locales/ios-ja.json"
     },
     "extra": {
       "router": {},
