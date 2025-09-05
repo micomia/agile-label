@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { FontStyles } from '../constants/FontStyles';
 
 interface LicenseInfo {
   licenses: string;
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    ...FontStyles.semiBold,
     color: Colors.text,
     flex: 1,
     textAlign: 'center',
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
   },
   libraryName: {
     fontSize: 16,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     flex: 1,
     marginRight: 8,
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
   },
   licenseTagText: {
     fontSize: 12,
-    fontWeight: '500',
+    ...FontStyles.medium,
     color: Colors.primary,
   },
   libraryDetails: {
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
   viewLicenseText: {
     fontSize: 14,
     color: Colors.primary,
-    fontWeight: '500',
+    ...FontStyles.medium,
   },
   statsCard: {
     backgroundColor: Colors.card,
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
   },
   statsTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     marginBottom: 8,
   },
@@ -491,7 +492,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     flex: 1,
   },
@@ -523,7 +524,7 @@ const styles = StyleSheet.create({
   },
   packageName: {
     fontSize: 15,
-    fontWeight: '500',
+    ...FontStyles.medium,
     color: Colors.text,
     marginBottom: 4,
   },
@@ -565,7 +566,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    ...FontStyles.semiBold,
     color: Colors.text,
     flex: 1,
     textAlign: 'center',
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
   },
   licenseTypeHeader: {
     fontSize: 20,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     marginBottom: 16,
     textAlign: 'center',

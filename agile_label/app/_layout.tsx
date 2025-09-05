@@ -1,7 +1,32 @@
 import { Stack } from 'expo-router';
 import { DatasetProvider } from '../contexts/DatasetContext';
+import { useFonts } from 'expo-font';
+import { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { setGlobalFontFamily } from '../constants/FontStyles';
+
+// スプラッシュスクリーンを表示し続ける
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [loaded] = useFonts({
+    'NotoSansJP': require('../assets/fonts/NotoSansJP-Regular.ttf'),
+    'NotoSansJP-Medium': require('../assets/fonts/NotoSansJP-Medium.ttf'),
+    'NotoSansJP-SemiBold': require('../assets/fonts/NotoSansJP-SemiBold.ttf'),
+    'NotoSansJP-Bold': require('../assets/fonts/NotoSansJP-Bold.ttf'),
+  });
+
+  useEffect(() => {
+    if (loaded) {
+      // グローバルフォントを設定
+      setGlobalFontFamily();
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
   return (
     <DatasetProvider>
       <Stack>

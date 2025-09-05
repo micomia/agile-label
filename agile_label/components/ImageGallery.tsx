@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import * as FileSystem from 'expo-file-system';
 import { Colors } from '../constants/Colors';
+import { FontStyles } from '../constants/FontStyles';
 import { ImageData, BBox } from '../contexts/DatasetContext';
 
 interface ImageGalleryProps {
@@ -1058,7 +1059,7 @@ const styles = StyleSheet.create({
   labelText: {
     color: '#ffffff',
     fontSize: 10,
-    fontWeight: '500',
+    ...FontStyles.medium,
   },
   bboxCountOverlay: {
     position: 'absolute',
@@ -1074,8 +1075,8 @@ const styles = StyleSheet.create({
   bboxCountText: {
     color: '#ffffff',
     fontSize: 10,
-    fontWeight: 'bold',
     marginLeft: 2,
+    ...FontStyles.bold,
   },
   emptyState: {
     flex: 1,
@@ -1085,10 +1086,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: Colors.text,
     marginTop: 16,
     textAlign: 'center',
+    ...FontStyles.bold,
   },
   emptySubtext: {
     fontSize: 14,
@@ -1118,7 +1119,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   cameraContainer: {
     flex: 1,
@@ -1176,7 +1177,7 @@ const styles = StyleSheet.create({
   bboxLabelText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   // 画像情報表示用のスタイル
   imageInfoContainer: {
@@ -1227,9 +1228,9 @@ const styles = StyleSheet.create({
   bottomButtonText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: '600',
     marginTop: 4,
     textAlign: 'center',
+    ...FontStyles.semiBold,
   },
   undoButtonHorizontal: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -1282,8 +1283,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: 'black',
+    ...FontStyles.bold,
   },
   classList: {
     maxHeight: 200,
@@ -1306,6 +1307,6 @@ const styles = StyleSheet.create({
   },
   classButtonTextSelected: {
     color: 'white',
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
 });

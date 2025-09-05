@@ -2,6 +2,7 @@ import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Pla
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/Colors';
+import { FontStyles } from '../constants/FontStyles';
 
 export default function PrivacyScreen() {
   const router = useRouter();
@@ -175,10 +176,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: Colors.text,
     flex: 1,
     textAlign: 'center',
+    ...FontStyles.bold,
   },
   rightSpacer: {
     width: 40, // backButtonと同じ幅でバランスを取る
@@ -195,11 +196,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
     color: Colors.text,
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 8,
+    ...FontStyles.bold,
   },
   lastUpdated: {
     fontSize: 14,
@@ -209,9 +210,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
     color: Colors.text,
     marginBottom: 12,
+    ...FontStyles.semiBold,
   },
   sectionText: {
     fontSize: 14,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bold: {
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   footer: {
     marginTop: 32,

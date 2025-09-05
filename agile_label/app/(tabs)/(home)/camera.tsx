@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { useDatasets, BBox } from '../../../contexts/DatasetContext';
 import { Colors } from '../../../constants/Colors';
+import { FontStyles } from '../../../constants/FontStyles';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 
 const { width, height } = Dimensions.get('window');
@@ -1171,7 +1172,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   captureButton: {
     width: 80,
@@ -1198,7 +1199,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   // プレビュー画面用のスタイル
   previewImage: {
@@ -1283,7 +1284,7 @@ const styles = StyleSheet.create({
   annotationText: {
     color: 'white',
     fontSize: 14,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   annotationHelp: {
     color: 'white',
@@ -1301,7 +1302,7 @@ const styles = StyleSheet.create({
   bboxLabelText: {
     color: 'white',
     fontSize: 10,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   // クラス選択用のスタイル
   classSelector: {
@@ -1325,7 +1326,7 @@ const styles = StyleSheet.create({
   classSelectorText: {
     color: 'white',
     fontSize: 14,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   // モーダル用のスタイル
   modalOverlay: {
@@ -1351,7 +1352,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: 'black',
   },
   classList: {
@@ -1381,7 +1382,7 @@ const styles = StyleSheet.create({
   },
   classButtonTextSelected: {
     color: 'white',
-    fontWeight: 'bold',
+    ...FontStyles.bold,
   },
   // 横並びボタン用のスタイル
   bottomButtonsContainer: {
@@ -1404,7 +1405,7 @@ const styles = StyleSheet.create({
   bottomButtonText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: '600',
+    ...FontStyles.semiBold,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -1441,7 +1442,7 @@ const styles = StyleSheet.create({
   },
   saveMessageTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: '#333',
     marginBottom: 8,
     textAlign: 'center',

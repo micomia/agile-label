@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
+import { FontStyles } from '../constants/FontStyles';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useDatasets } from '../contexts/DatasetContext';
@@ -189,8 +190,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: Colors.text,
+    ...FontStyles.bold,
   },
   placeholder: {
     width: 40, // closeButtonと同じ幅でバランスを取る
@@ -212,8 +213,8 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
     textAlign: 'center',
+    ...FontStyles.semiBold,
   },
   createButtonDisabled: {
     backgroundColor: Colors.text + '30',
@@ -248,9 +249,9 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
     color: Colors.text,
     marginBottom: 8,
+    ...FontStyles.semiBold,
   },
   input: {
     borderWidth: 1,
