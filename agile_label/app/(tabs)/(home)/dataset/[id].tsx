@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Platform
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../../constants/Colors';
+import { FontStyles } from '../../../../constants/FontStyles';
 import { useDatasets } from '../../../../contexts/DatasetContext';
 import { ImageGallery } from '../../../../components/ImageGallery';
 import { FloatingActionButton } from '../../../../components/FloatingActionButton';
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     flex: 1,
     textAlign: 'center',
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text,
     marginLeft: 6,
-    fontWeight: '500',
+    ...FontStyles.medium,
   },
   errorContainer: {
     flex: 1,

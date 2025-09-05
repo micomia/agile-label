@@ -2,6 +2,7 @@ import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Pla
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '../constants/Colors';
+import { FontStyles } from '../constants/FontStyles';
 
 export default function TermsScreen() {
     const router = useRouter();
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        ...FontStyles.bold,
         color: Colors.text,
         flex: 1,
         textAlign: 'center',
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 24,
-        fontWeight: 'bold',
+        ...FontStyles.bold,
         color: Colors.text,
         textAlign: 'center',
         marginTop: 20,
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
 
     sectionTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        ...FontStyles.semiBold,
         color: Colors.text,
         marginBottom: 12,
     },

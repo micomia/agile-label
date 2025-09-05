@@ -1,6 +1,7 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
 import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
 import { Colors } from '../../../constants/Colors';
+import { FontStyles } from '../../../constants/FontStyles';
 import { router, useFocusEffect } from 'expo-router';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { Ionicons } from '@expo/vector-icons';
@@ -144,8 +145,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
     color: Colors.text,
+    ...FontStyles.bold,
   },
   content: {
     flex: 1,
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     marginTop: 16,
     textAlign: 'center',
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    ...FontStyles.bold,
     color: Colors.text,
     flex: 1,
   },

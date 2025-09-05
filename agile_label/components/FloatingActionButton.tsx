@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle, Text, View} from 'react-native';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { FontStyles } from '../constants/FontStyles';
 
 interface FloatingActionButtonProps {
   onPress: () => void;
@@ -111,6 +112,6 @@ const styles = StyleSheet.create({
   fabText: {
     marginLeft: 8,
     fontSize: 16,
-    fontWeight: '600',
+    ...FontStyles.semiBold,
   },
 });
