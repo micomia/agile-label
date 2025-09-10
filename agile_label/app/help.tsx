@@ -127,38 +127,7 @@ export default function HelpScreen() {
                     </View>
                 </View>
 
-                {/* よくある質問セクション */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>よくある質問</Text>
-                    
-                    <View style={styles.faqItem}>
-                        <Text style={styles.faqQuestion}>Q. 写真の品質はどのくらいですか？</Text>
-                        <Text style={styles.faqAnswer}>
-                            A. 3024×4032ピクセルの高解像度で撮影され、機械学習に適した品質の画像を取得できます。
-                        </Text>
-                    </View>
 
-                    <View style={styles.faqItem}>
-                        <Text style={styles.faqQuestion}>Q. データセットのサイズ制限はありますか？</Text>
-                        <Text style={styles.faqAnswer}>
-                            A. アプリ自体にサイズ制限はありませんが、デバイスのストレージ容量に依存します。
-                        </Text>
-                    </View>
-
-                    <View style={styles.faqItem}>
-                        <Text style={styles.faqQuestion}>Q. エクスポートしたデータの形式は？</Text>
-                        <Text style={styles.faqAnswer}>
-                            A. ZIP形式で書き出され、画像（jpg）とラベル（txt）のディレクトリがそれぞれ保存されます。
-                        </Text>
-                    </View>
-
-                    <View style={styles.faqItem}>
-                        <Text style={styles.faqQuestion}>Q. データセットを削除したい場合は？</Text>
-                        <Text style={styles.faqAnswer}>
-                            A. ホーム画面でデータセットカードを長押しすると、削除オプションが表示されます。
-                        </Text>
-                    </View>
-                </View>
 
                 {/* サポートセクション */}
                 <View style={styles.section}>
