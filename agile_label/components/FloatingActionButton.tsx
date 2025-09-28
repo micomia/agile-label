@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ViewStyle, Text, View} from 'react-native';
+import { TouchableOpacity, StyleSheet, ViewStyle, Text, View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { FontStyles } from '../constants/FontStyles';
@@ -31,6 +32,12 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   showText = false,
   text = 'camera',
 }) => {
+  const insets = useSafeAreaInsets();
+  
+  // タブバーの高さを正確に計算
+  const tabBarHeight = Platform.OS === 'ios' ? 84 : 70 + insets.bottom; // 新しいAndroid高さに合わせる
+  const bottomOffset = tabBarHeight + 20; // よりシンプルな計算でマージンを確保
+
   const renderIcon = () => {
     if (iconLibrary === 'Ionicons' && ioniconsName) {
       return <Ionicons name={ioniconsName} size={iconSize} color={iconColor} />;
@@ -44,6 +51,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
         showText ? styles.fabWithText : styles.fab,
         {
           backgroundColor,
+          bottom: bottomOffset, // 動的に計算されたbottom値
           ...(showText ? {} : {
           width: size,
           height: size,
@@ -70,7 +78,6 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    bottom: 20,
     right: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -86,7 +93,6 @@ const styles = StyleSheet.create({
   },
   fabWithText: {
     position: 'absolute',
-    bottom: 20,
     right: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,

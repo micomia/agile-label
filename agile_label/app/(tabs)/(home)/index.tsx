@@ -1,8 +1,9 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
-import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform, ActivityIndicator, StatusBar } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { FontStyles } from '../../../constants/FontStyles';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useDatasets, Dataset } from '../../../contexts/DatasetContext';
@@ -10,15 +11,26 @@ import { createAndShareDatasetZip } from '../../../utils/fileUtils';
 import React from 'react';
 
 export default function Index() {
+  const insets = useSafeAreaInsets();
   const { datasets, isLoading, deleteDataset, loadDatasetImages } = useDatasets();
 
   // フォーカス時にデータセットの画像を読み込む
   useFocusEffect(
     React.useCallback(() => {
+      // Androidでステータスバーを正常な状態に設定
+      if (Platform.OS === 'android') {
+        StatusBar.setHidden(false, 'none');
+        StatusBar.setTranslucent(false);
+        StatusBar.setBackgroundColor(Colors.background, false);
+        StatusBar.setBarStyle('dark-content', false);
+      }
+      
       // 存在するデータセットのIDのみを使用
-      datasets.forEach(dataset => {
-        loadDatasetImages(dataset.id);
-      });
+      if (datasets && Array.isArray(datasets)) {
+        datasets.forEach(dataset => {
+          loadDatasetImages(dataset.id);
+        });
+      }
     }, [datasets, loadDatasetImages])
   );
 
@@ -93,7 +105,7 @@ export default function Index() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, Platform.OS === 'android' && { paddingTop: insets.top }]}>
       {/* カスタムヘッダー */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>データセット</Text>
@@ -132,8 +144,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    // Androidでのステータスバー対応
-    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     paddingHorizontal: 20,
@@ -188,7 +198,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   listContainer: {
-    paddingBottom: 100, // FABとの重複を避ける
+    paddingBottom: Platform.OS === 'ios' ? 150 : 140, // 新しいAndroidタブバー高さ + FAB位置に合わせて調整
   },
   card: {
     backgroundColor: Colors.card,

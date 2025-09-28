@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agile Label",
     "slug": "agile_label",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon_agilelabel.png",
     "scheme": "agilelabel",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "2",
+      "buildNumber": "7",
       "infoPlist": {
         "NSPhotoLibraryAddUsageDescription": "画像をフォトライブラリに保存するために必要です",
         "NSCameraUsageDescription": "写真を撮影してデータセットに追加するために必要です",
@@ -32,7 +32,11 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.CAMERA"
       ],
-      "package": "com.watson404v.agile_label"
+      "package": "com.watson404v.agile_label",
+      "versionCode": 10,
+      "statusBarBackgroundColor": "#000000",
+      "statusBarStyle": "dark",
+      "navigationBarColor": "#000000"
     },
     "web": {
       "bundler": "metro",
@@ -55,7 +59,7 @@
         {
           "android": {
             "compileSdkVersion": 35,
-            "targetSdkVersion": 34,
+            "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0"
           },
           "ios": {

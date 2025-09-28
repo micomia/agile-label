@@ -1,11 +1,26 @@
-import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform, Image } from 'react-native';
+import { Text, View, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Alert, Linking, Platform, Image, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { FontStyles } from '../../constants/FontStyles';
+import React from 'react';
 
 export default function AboutScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  // フォーカス時にStatusBarを正常状態に設定
+  useFocusEffect(
+    React.useCallback(() => {
+      if (Platform.OS === 'android') {
+        StatusBar.setHidden(false, 'none');
+        StatusBar.setTranslucent(false);
+        StatusBar.setBackgroundColor(Colors.background, false);
+        StatusBar.setBarStyle('dark-content', false);
+      }
+    }, [])
+  );
 
   const handleLinkPress = (url: string, title: string) => {
     Alert.alert(
@@ -44,7 +59,7 @@ export default function AboutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, Platform.OS === 'android' && { paddingTop: insets.top }]}>
       {/* カスタムヘッダー */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>その他</Text>
@@ -129,8 +144,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    // Androidでのステータスバー対応
-    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     paddingHorizontal: 20,

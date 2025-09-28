@@ -1,16 +1,31 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors';
 import { FontStyles } from '../constants/FontStyles';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useDatasets } from '../contexts/DatasetContext';
+import React from 'react';
 
 export default function CreateScreen() {
+  const insets = useSafeAreaInsets();
   const [datasetName, setDatasetName] = useState('');
   const [datasetDescription, setDatasetDescription] = useState('');
   const [classNames, setClassNames] = useState('');
   const { addDataset } = useDatasets();
+
+  // フォーカス時にStatusBarを正常状態に設定
+  useFocusEffect(
+    React.useCallback(() => {
+      if (Platform.OS === 'android') {
+        StatusBar.setHidden(false, 'none');
+        StatusBar.setTranslucent(false);
+        StatusBar.setBackgroundColor(Colors.background, false);
+        StatusBar.setBarStyle('dark-content', false);
+      }
+    }, [])
+  );
 
   // 英数字とアンダースコアのみを許可する関数
   const validateDatasetName = (text: string) => {
@@ -61,7 +76,7 @@ export default function CreateScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, Platform.OS === 'android' && { paddingTop: insets.top }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* ヘッダー */}
@@ -172,8 +187,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    // Androidでのステータスバー対応
-    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Platform, StatusBar } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../../constants/Colors';
 import { FontStyles } from '../../../../constants/FontStyles';
@@ -9,6 +10,7 @@ import { FloatingActionButton } from '../../../../components/FloatingActionButto
 import React from 'react';
 
 export default function DatasetDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { 
     datasets, 
@@ -26,10 +28,21 @@ export default function DatasetDetailScreen() {
   // ページにフォーカスが当たった時に画像を読み込む
   useFocusEffect(
     React.useCallback(() => {
+      // Androidでステータスバーを正常な状態に設定
+      if (Platform.OS === 'android') {
+        StatusBar.setHidden(false, 'none');
+        StatusBar.setTranslucent(false);
+        StatusBar.setBackgroundColor(Colors.background, false);
+        StatusBar.setBarStyle('dark-content', false);
+      }
+      
       if (id) {
         loadDatasetImages(id);
         // クラス数はloadDatasetImages内で自動的に更新されます
       }
+      return () => {
+        // 必要に応じてクリーンアップ処理を追加
+      };
     }, [id, loadDatasetImages])
   );
 
@@ -122,7 +135,7 @@ export default function DatasetDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, Platform.OS === 'android' && { paddingTop: insets.top }]}>
       {/* ヘッダー */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -176,8 +189,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    // Androidでのステータスバー対応
-    paddingTop: Platform.OS === 'android' ? 24 : 0,
   },
   header: {
     flexDirection: 'row',

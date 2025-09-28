@@ -23,6 +23,7 @@ import { useDatasets, BBox } from '../../../contexts/DatasetContext';
 import { Colors } from '../../../constants/Colors';
 import { FontStyles } from '../../../constants/FontStyles';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -60,23 +61,28 @@ function getClassColor(className: string, allClasses: string[]): string {
   return DEFAULT_COLORS[colorIndex];
 }
 
-// 3:4の縦横比でカメラビューのサイズを計算（縦長）
-const topBarHeight = 120;
-const bottomBarHeight = 180; // 下部の黒い帯を高くする
-const cameraHeight = height - topBarHeight - bottomBarHeight; // 上下の黒い帯分を引く
-const cameraWidth = width;
-const aspectRatio = 3 / 4; // 縦長の比率に変更
+// カメラビューのサイズを計算（横幅をフルに使用）
+const topBarHeight = 100; // スタイルの実際の値に合わせる
+const bottomBarHeight = 160; // スタイルの実際の値に合わせる
+const containerPadding = 60; // paddingTop(40) + paddingBottom(20) の合計
+const availableHeight = Platform.OS === 'android' 
+  ? Dimensions.get('screen').height - topBarHeight - bottomBarHeight - containerPadding - 40
+  : height - topBarHeight - bottomBarHeight - containerPadding - 20;
+const availableWidth = width; // 横幅をフルに使用
+const aspectRatio = 3 / 4; // 縦長の比率
 
-// カメラビューを3:4の縦横比に調整（縦長）
-let adjustedCameraWidth = cameraWidth;
-let adjustedCameraHeight = cameraWidth / aspectRatio;
+// カメラビューを横幅フルに調整
+let adjustedCameraWidth = availableWidth;
+let adjustedCameraHeight = adjustedCameraWidth / aspectRatio;
 
-if (adjustedCameraHeight > cameraHeight) {
-  adjustedCameraHeight = cameraHeight;
-  adjustedCameraWidth = cameraHeight * aspectRatio;
+// 高さが利用可能な領域を超える場合は高さベースで調整
+if (adjustedCameraHeight > availableHeight) {
+  adjustedCameraHeight = availableHeight;
+  adjustedCameraWidth = adjustedCameraHeight * aspectRatio;
 }
 
 export default function CameraScreen() {
+  const insets = useSafeAreaInsets();
   const { datasetId } = useLocalSearchParams<{ datasetId?: string }>();
   const { addImageToDataset } = useDatasets();
   const navigation = useNavigation();
@@ -114,31 +120,80 @@ export default function CameraScreen() {
   // ナビゲーションバーの非表示設定
   useFocusEffect(
     React.useCallback(() => {
-      // ステータスバーとタブバーの設定
+      let isExpoGo = false;
+      
+      // Expo Go環境の検出
+      try {
+        // expo-constantsを使用してExpo Go環境を検出
+        isExpoGo = __DEV__ && (typeof expo !== 'undefined');
+      } catch (error) {
+        // エラーが発生した場合は開発環境と判断
+        isExpoGo = __DEV__;
+      }
+      
+      // ステータスバーの設定 - Androidではimmersive modeを使用
       if (Platform.OS === 'android') {
-        StatusBar.setHidden(true, 'slide');
+        StatusBar.setHidden(true, 'none'); // アニメーションなしで即座に非表示
+        StatusBar.setTranslucent(true); // 透明モードを有効化
       }
       
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.setOptions({
-          tabBarStyle: { display: 'none' }
-        });
-      }
-      
-      return () => {
-        // 画面を離れる時にタブバーとステータスバーを再表示
-        if (Platform.OS === 'android') {
-          StatusBar.setHidden(false, 'slide');
-        }
-        
+      // タブバー非表示処理（環境別に対応）
+      const hideTabBar = () => {
+        const parent = navigation.getParent();
         if (parent) {
-          // 元のタブバースタイルを復元
           parent.setOptions({
             tabBarStyle: {
-              backgroundColor: Colors.background,
-              paddingTop: Platform.OS === 'android' ? 8 : 0,
+              display: 'none',
+              height: 0,
+              overflow: 'hidden',
+              position: 'absolute',
+              bottom: -300,
+              opacity: 0,
+              zIndex: -1000,
             }
+          });
+        }
+      };
+
+      // 即座に実行 + 遅延実行で確実に
+      hideTabBar();
+      const timeoutId1 = setTimeout(hideTabBar, 100);
+      const timeoutId2 = setTimeout(hideTabBar, 300);
+      
+      return () => {
+        clearTimeout(timeoutId1);
+        clearTimeout(timeoutId2);
+        
+        // 画面を離れる時にタブバーとステータスバーを正常に復元
+        if (Platform.OS === 'android') {
+          StatusBar.setHidden(false, 'none'); // 即座に表示に戻す
+          StatusBar.setTranslucent(false); // 通常モードに戻す
+          StatusBar.setBackgroundColor(Colors.background, true); // 背景色を通常に戻す
+          StatusBar.setBarStyle('dark-content', true); // ステータスバースタイルを通常に戻す
+        }
+        
+        const parent = navigation.getParent();
+        if (parent) {
+          // タブバーを正常な状態に戻す - 次のフレームで実行して確実に適用
+          requestAnimationFrame(() => {
+            parent.setOptions({
+              tabBarStyle: {
+                backgroundColor: Colors.background,
+                borderTopWidth: 1,
+                borderTopColor: Colors.border,
+                height: Platform.OS === 'ios' ? 84 : 70 + insets.bottom, // 新しいAndroid高さに合わせる
+                paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom + 4, 12), // 新しいパディング設定
+                paddingTop: Platform.OS === 'ios' ? 4 : 8, // 新しいpaddingTop設定
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                display: 'flex',
+                opacity: 1,
+                overflow: 'visible',
+                zIndex: 1,
+              }
+            });
           });
         }
       };
@@ -332,6 +387,12 @@ export default function CameraScreen() {
           setCapturedPhoto(photo.uri);
           setBboxes([]); // BBoxをリセット
           setHistory([]); // 履歴をリセット
+          
+          // プレビュー画面でも StatusBar を非表示に保つ - 統一した設定
+          if (Platform.OS === 'android') {
+            StatusBar.setHidden(true, 'none');
+            StatusBar.setTranslucent(true);
+          }
         }
       } catch (error) {
         // エラー時の処理（ログ出力なし、連続撮影を阻害しないため）
@@ -446,7 +507,8 @@ export default function CameraScreen() {
         console.log('画像サイズ:', actualImageSize);
         console.log('BBox数:', bboxes.length);
         console.log('アノテーション内容:');
-        yoloAnnotations.split('\n').forEach((line, index) => {
+        const lines = yoloAnnotations ? yoloAnnotations.split('\n') : [];
+        lines.forEach((line, index) => {
           console.log(`  [${index}] ${line}`);
         });
         console.log('================================');
@@ -462,15 +524,37 @@ export default function CameraScreen() {
       setSaveMessage(`写真がデータセットに保存されました${bboxes.length > 0 ? `\n(${bboxes.length}個のアノテーション付き)` : ''}`);
       setShowSaveMessage(true);
 
-      // 2秒後に自動的にカメラ画面に戻る
+      // 1.5秒後にカメラ画面に戻る
       setTimeout(() => {
+        // 状態をリセット
         setShowSaveMessage(false);
         setSaveMessage('');
         setCapturedPhoto(null);
-        setActualImageSize(null); // 実際の画像サイズもリセット
+        setActualImageSize(null);
         setBboxes([]);
-        setHistory([]); // 履歴もリセット
-      }, 2000);
+        setHistory([]);
+        
+        // カメラ画面に戻った時の状態を確実に設定
+        if (Platform.OS === 'android') {
+          StatusBar.setHidden(true, 'none');
+          StatusBar.setTranslucent(true);
+        }
+        
+        const parent = navigation.getParent();
+        if (parent) {
+          parent.setOptions({
+            tabBarStyle: {
+              display: 'none',
+              height: 0,
+              overflow: 'hidden',
+              position: 'absolute',
+              bottom: -300,
+              opacity: 0,
+              zIndex: -1000,
+            }
+          });
+        }
+      }, 1500);
 
       console.log('写真が保存されました:', destinationUri);
     } catch (error) {
@@ -480,10 +564,33 @@ export default function CameraScreen() {
   }
 
   function retakePhoto() {
+    // 状態をリセット
     setCapturedPhoto(null);
-    setActualImageSize(null); // 実際の画像サイズもリセット
+    setActualImageSize(null);
     setBboxes([]);
-    setHistory([]); // 履歴もリセット
+    setHistory([]);
+    
+    // StatusBar を再度非表示にする - アニメーションなしで確実に
+    if (Platform.OS === 'android') {
+      StatusBar.setHidden(true, 'none');
+      StatusBar.setTranslucent(true);
+    }
+    
+    // タブバーを強制的に非表示
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({
+        tabBarStyle: {
+          display: 'none',
+          height: 0,
+          overflow: 'hidden',
+          position: 'absolute',
+          bottom: -300,
+          opacity: 0,
+          zIndex: -1000,
+        }
+      });
+    }
   }
 
   // BBox描画開始
@@ -823,7 +930,19 @@ export default function CameraScreen() {
   if (capturedPhoto) {
     return (
       <GestureHandlerRootView style={styles.container}>
-        {Platform.OS === 'android' && <StatusBar hidden={true} />}
+        {Platform.OS === 'android' && (
+          <StatusBar 
+            hidden={true} 
+            translucent={true} 
+            backgroundColor="black" 
+            barStyle="light-content"
+          />
+        )}
+        {/* 全画面背景で白いタブバー領域をカバー */}
+        {Platform.OS === 'android' && (
+          <View style={styles.fullScreenBackground} />
+        )}
+        
         {/* 上部の黒い帯 */}
         <View style={styles.topBar}>
           <View style={styles.header}>
@@ -1072,7 +1191,19 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
-      {Platform.OS === 'android' && <StatusBar hidden={true} />}
+      {Platform.OS === 'android' && (
+        <StatusBar 
+          hidden={true} 
+          translucent={true} 
+          backgroundColor="black" 
+          barStyle="light-content"
+        />
+      )}
+      {/* 全画面背景で白いタブバー領域をカバー */}
+      {Platform.OS === 'android' && (
+        <View style={styles.fullScreenBackground} />
+      )}
+      
       {/* 上部の黒い帯 */}
       <View style={styles.topBar}>
         <View style={styles.header}>
@@ -1117,18 +1248,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'black',
+    ...Platform.select({
+      android: {
+        position: 'absolute',
+        top: 0, // StatusBarは非表示なので、画面の一番上から開始
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: Dimensions.get('screen').height,
+        width: Dimensions.get('window').width,
+        zIndex: 9999,
+        elevation: 9999,
+        // タブバー領域を完全に覆う - より強力な設定
+        marginBottom: -150,
+        paddingBottom: 150,
+      },
+      ios: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 1000,
+      }
+    }),
+  },
+  fullScreenBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1000,
-    elevation: 1000, // Android用の elevation を追加
+    backgroundColor: 'black',
+    zIndex: -1, // 他のコンテンツの後ろに配置
     ...Platform.select({
       android: {
-        height: Dimensions.get('window').height,
+        // Android で確実に全画面をカバー - より強力な設定
+        height: Dimensions.get('screen').height + 300,
         width: Dimensions.get('window').width,
-      },
+        marginBottom: -300,
+        marginTop: -50,
+      }
     }),
   },
   message: {
@@ -1138,24 +1298,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   topBar: {
-    height: 120,
+    height: 100, // 80から100に増加して十分なスペースを確保
     backgroundColor: 'black',
     justifyContent: 'flex-end',
+    ...Platform.select({
+      android: {
+        // StatusBarは非表示だが、安全な余白として上部にパディングを追加
+        paddingTop: 20,
+      }
+    }),
   },
   camera: {
     backgroundColor: 'black',
   },
   cameraContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start', // centerからflex-startに変更してカメラを上に詰めすぎないようにする
     alignItems: 'center',
     backgroundColor: 'black',
+    paddingTop: 40, // 上部のパディング
+    paddingBottom: 20,
   },
   bottomBar: {
-    height: 180, // 高さを120から180に増やす
+    height: 160, // 180から160に縮小
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
+    ...Platform.select({
+      android: {
+        // Android でタブバー領域を完全に覆う
+        paddingBottom: 50,
+        marginBottom: -50,
+      }
+    }),
   },
   header: {
     flexDirection: 'row',
