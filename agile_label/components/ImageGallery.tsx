@@ -1,24 +1,23 @@
-import React, { useState, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import React, { useRef, useState } from 'react';
 import {
-  View,
+  Alert,
+  Dimensions,
   FlatList,
   Image,
-  TouchableOpacity,
   Modal,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
-  Dimensions,
-  Alert,
-  ScrollView,
-  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
-import * as FileSystem from 'expo-file-system';
 import { Colors } from '../constants/Colors';
 import { FontStyles } from '../constants/FontStyles';
-import { ImageData, BBox } from '../contexts/DatasetContext';
+import { BBox, ImageData } from '../contexts/DatasetContext';
 
 interface ImageGalleryProps {
   images: ImageData[];

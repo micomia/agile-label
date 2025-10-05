@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 // BBoxの型定義
 export interface BBox {

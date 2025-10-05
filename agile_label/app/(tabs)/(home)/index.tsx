@@ -1,14 +1,14 @@
 // Colorsという色をまとめたtsxファイルを作成し、定数を定義してインポートしています。
-import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform, ActivityIndicator, StatusBar } from 'react-native';
-import { Colors } from '../../../constants/Colors';
-import { FontStyles } from '../../../constants/FontStyles';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import React from 'react';
+import { ActivityIndicator, Alert, FlatList, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
-import { Ionicons } from '@expo/vector-icons';
-import { useDatasets, Dataset } from '../../../contexts/DatasetContext';
+import { Colors } from '../../../constants/Colors';
+import { FontStyles } from '../../../constants/FontStyles';
+import { Dataset, useDatasets } from '../../../contexts/DatasetContext';
 import { createAndShareDatasetZip } from '../../../utils/fileUtils';
-import React from 'react';
 
 export default function Index() {
   const insets = useSafeAreaInsets();

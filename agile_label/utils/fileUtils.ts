@@ -1,7 +1,7 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import { ImageData } from '../contexts/DatasetContext';
 
 // react-native-zip-archiveをオプショナルでインポート

@@ -17,9 +17,10 @@ import {
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { FloatingActionButton } from '../../../components/FloatingActionButton';
 import { useDatasets, BBox } from '../../../contexts/DatasetContext';
+import { useAds } from '../../../contexts/AdContext';
 import { Colors } from '../../../constants/Colors';
 import { FontStyles } from '../../../constants/FontStyles';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
@@ -85,6 +86,7 @@ export default function CameraScreen() {
   const insets = useSafeAreaInsets();
   const { datasetId } = useLocalSearchParams<{ datasetId?: string }>();
   const { addImageToDataset } = useDatasets();
+  const { incrementPhotoCount, photoCount, isAdLoaded } = useAds();
   const navigation = useNavigation();
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
@@ -237,8 +239,8 @@ export default function CameraScreen() {
         
         const loadedClasses = classesContent
           .split('\n')
-          .filter(line => line.trim() && !line.startsWith('#'))
-          .map(line => line.trim());
+          .filter((line: string) => line.trim() && !line.startsWith('#'))
+          .map((line: string) => line.trim());
         
         if (loadedClasses.length > 0) {
           console.log(`[カメラ] classes.txtから読み込んだクラス:`, loadedClasses);
@@ -520,13 +522,34 @@ export default function CameraScreen() {
         await addImageToDataset(datasetId, destinationUri, bboxes);
       }
 
-      // 保存完了メッセージを表示
-      setSaveMessage(`写真がデータセットに保存されました${bboxes.length > 0 ? `\n(${bboxes.length}個のアノテーション付き)` : ''}`);
+      // まず保存完了メッセージを表示
+      console.log('[カメラ] 保存完了メッセージを表示');
+      const message = `写真がデータセットに保存されました${bboxes.length > 0 ? `\n(${bboxes.length}個のアノテーション付き)` : ''}`;
+      setSaveMessage(message);
       setShowSaveMessage(true);
-
+      
+      // 写真カウントをチェック（広告表示の判定）
+      console.log(`[カメラ] 広告チェック - 現在のカウント: ${photoCount}, 広告読み込み状態: ${isAdLoaded}`);
+      
+      // 広告表示を試行（非同期で実行）
+      incrementPhotoCount().then((shouldShowAd) => {
+        console.log(`[カメラ] 広告表示結果: ${shouldShowAd}`);
+        
+        if (shouldShowAd) {
+          // 広告が表示された場合、メッセージを更新
+          console.log('[カメラ] 広告表示完了、メッセージを更新');
+          setSaveMessage(`${message}\n\n広告ありがとうございます！`);
+        }
+      }).catch((error) => {
+        console.error('[カメラ] 広告表示エラー:', error);
+        // エラーが発生しても続行
+      });
+      
       // 1.5秒後にカメラ画面に戻る
+      console.log('[カメラ] 1.5秒後にカメラに戻るタイマーをセット');
       setTimeout(() => {
         // 状態をリセット
+        console.log('[カメラ] タイマー発火: 状態をリセットしてカメラ画面に戻ります');
         setShowSaveMessage(false);
         setSaveMessage('');
         setCapturedPhoto(null);
@@ -559,7 +582,15 @@ export default function CameraScreen() {
       console.log('写真が保存されました:', destinationUri);
     } catch (error) {
       console.error('写真保存エラー:', error);
-      Alert.alert('エラー', '写真の保存に失敗しました');
+      console.error('エラー詳細:', JSON.stringify(error, null, 2));
+      Alert.alert('エラー', `写真の保存に失敗しました: ${error}`);
+      
+      // エラー時もカメラに戻る
+      setShowSaveMessage(false);
+      setCapturedPhoto(null);
+      setActualImageSize(null);
+      setBboxes([]);
+      setHistory([]);
     }
   }
 
@@ -928,6 +959,7 @@ export default function CameraScreen() {
 
   // プレビュー画面を表示
   if (capturedPhoto) {
+    console.log('[カメラ] プレビュー画面レンダリング - showSaveMessage:', showSaveMessage, 'message:', saveMessage);
     return (
       <GestureHandlerRootView style={styles.container}>
         {Platform.OS === 'android' && (
